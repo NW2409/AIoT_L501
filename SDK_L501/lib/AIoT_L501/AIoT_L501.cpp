@@ -3,6 +3,21 @@
 AIoT_L501::AIoT_L501(HardwareSerial &serial, uint32_t baud)
     : serial_(serial), baud_(baud) {}
 
+// Tự động reconnect khi mất mạng
+bool AIoT_L501::ensureNetwork(uint8_t retry, uint32_t interval) {
+    for (uint8_t i = 0; i < retry; ++i) {
+        if (isSimReady() && isNetworkRegistered()) {
+            return true;
+        }
+        // Thử gắn lại GPRS nếu chưa đăng ký mạng
+        String resp;
+        sendAT("AT+CFUN=1", resp, 3000); // Đảm bảo module ở chế độ full chức năng
+        sendAT("AT+CGATT=1", resp, 5000); // Gắn lại mạng
+        delay(interval);
+    }
+    return false;
+}
+
 void AIoT_L501::begin() {
     serial_.begin(baud_);
 }
@@ -21,6 +36,21 @@ bool AIoT_L501::sendAT(const char *cmd, String &response, uint32_t timeout) {
         }
     }
     return false;
+}
+
+String AIoT_L501::readAT(uint32_t timeout) {
+    String response = "";
+    uint32_t start = millis();
+    while (millis() - start < timeout) {
+        while (serial_.available()) {
+            char c = serial_.read();
+            response += c;
+        }
+        if (response.length() > 0 && (response.endsWith("OK\r\n") || response.endsWith("ERROR\r\n"))) {
+            break;
+        }
+    }
+    return response;
 }
 
 bool AIoT_L501::isSimReady() {
@@ -207,4 +237,16 @@ bool AIoT_L501::deactivatePDP(int cid) {
     String resp;
     String cmd = "AT+CGACT=0," + String(cid);
     return sendAT(cmd.c_str(), resp, 5000);
+}
+
+bool AIoT_L501::connectInternet4G(const String &apn, const String &user, const String &pass, int cid) {
+    String resp;
+    // Gắn mạng GPRS và thiết lập APN
+    if (!sendAT("AT+CGATT=1", resp, 5000)) return false;
+    String cmd = "AT+CGDCONT=" + String(cid) + ",\"IP\",\"" + apn + "\"";
+    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
+    // Kích hoạt PDP context
+    cmd = "AT+CGACT=1," + String(cid);
+    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
+    return true;
 }
