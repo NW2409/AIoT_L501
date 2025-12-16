@@ -28,6 +28,10 @@ public:
     bool attachGPRS(const String &apn, const String &user = "", const String &pass = "");
     bool activatePDP(int cid = 1);
     bool deactivatePDP(int cid = 1);
+    bool connectInternet4G(const String &apn, const String &user = "", const String &pass = "", int cid = 1);
+    // Tự động reconnect khi mất mạng
+    bool ensureNetwork(uint8_t retry = 3, uint32_t interval = 5000);
+    String readAT(uint32_t timeout = 2000);
 private:
     HardwareSerial &serial_;
     uint32_t baud_;
