@@ -17,7 +17,7 @@ public:
     String getModuleInfo(); // Lấy thông tin module (phiên bản, tên, ...)
     // MQTT
     bool mqttConfig(const String &clientId, const String &username = "", const String &password = ""); // Cấu hình MQTT client
-    bool mqttSetServer(const String &address, int port, int version = 4); // Thiết lập server MQTT
+    bool mqttSetServer(const String &address, int port, int version); // Thiết lập server MQTT
     bool mqttConnect(int cleanSession = 1, int keepalive = 60); // Kết nối MQTT
     bool mqttPublish(const String &topic, const String &payload, int qos = 0, int retain = 0); // Gửi dữ liệu lên topic MQTT
     bool mqttSubscribe(const String &topic, int qos = 0); // Đăng ký nhận dữ liệu từ topic MQTT
