@@ -70,6 +70,14 @@ bool AIoT_L501::isNetworkRegistered() {
     return false;
 }
 
+bool AIoT_L501::isDataConnected() {
+    String resp;
+    if (sendAT("AT+CGACT?", resp, 5000)) {
+        return resp.indexOf(",1") != -1;
+    }
+    return false;
+}
+
 String AIoT_L501::getIMEI() {
     String resp;
     if (sendAT("AT+GSN", resp)) {
@@ -165,13 +173,20 @@ bool AIoT_L501::mqttConfig(const String &clientId, const String &username, const
 bool AIoT_L501::mqttSetServer(const String &address, int port, int version) {
     String resp;
     String cmd = "AT+MIPSTART=\"" + address + "\"," + String(port) + "," + String(version);
-    return sendAT(cmd.c_str(), resp, 10000);
+    // Cần timeout dài hơn và kiểm tra SUCCESS
+    if (!sendAT(cmd.c_str(), resp, 15000)) return false;
+    // Chờ thêm phản hồi +MIPSTART: SUCCESS
+    String resp2 = readAT(10000);
+    return resp2.indexOf("SUCCESS") != -1;
 }
 
 bool AIoT_L501::mqttConnect(int cleanSession, int keepalive) {
     String resp;
     String cmd = "AT+MCONNECT=" + String(cleanSession) + "," + String(keepalive);
-    return sendAT(cmd.c_str(), resp, 10000) && resp.indexOf("SUCCESS") != -1;
+    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
+    // Chờ phản hồi +MCONNECT: SUCCESS
+    String resp2 = readAT(10000);
+    return resp2.indexOf("SUCCESS") != -1;
 }
 
 bool AIoT_L501::mqttPublish(const String &topic, const String &payload, int qos, int retain) {
@@ -183,7 +198,9 @@ bool AIoT_L501::mqttPublish(const String &topic, const String &payload, int qos,
 bool AIoT_L501::mqttSubscribe(const String &topic, int qos) {
     String resp;
     String cmd = "AT+MSUB=\"" + topic + "\"," + String(qos);
-    return sendAT(cmd.c_str(), resp, 10000) && resp.indexOf("SUCCESS") != -1;
+    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
+    String resp2 = readAT(10000);
+    return resp2.indexOf("SUCCESS") != -1;
 }
 
 bool AIoT_L501::mqttUnsubscribe(const String &topic) {
@@ -194,12 +211,16 @@ bool AIoT_L501::mqttUnsubscribe(const String &topic) {
 
 bool AIoT_L501::mqttDisconnect() {
     String resp;
-    return sendAT("AT+MDISCONNECT", resp, 5000) && resp.indexOf("SUCCESS") != -1;
+    if (!sendAT("AT+MDISCONNECT", resp, 5000)) return false;
+    String resp2 = readAT(5000);
+    return resp2.indexOf("SUCCESS") != -1;
 }
 
 bool AIoT_L501::mqttClose() {
     String resp;
-    return sendAT("AT+MIPCLOSE", resp, 5000) && resp.indexOf("SUCCESS") != -1;
+    if (!sendAT("AT+MIPCLOSE", resp, 5000)) return false;
+    String resp2 = readAT(5000);
+    return resp2.indexOf("SUCCESS") != -1;
 }
 
 int AIoT_L501::mqttStatus() {
@@ -223,7 +244,7 @@ bool AIoT_L501::attachGPRS(const String &apn, const String &user, const String &
     // Thiết lập APN
     String cmd = "AT+CGDCONT=1,\"IP\",\"" + apn + "\"";
     if (!sendAT(cmd.c_str(), resp, 5000)) return false;
-    // Nếu module không hỗ trợ AT+CGAUTH thì bỏ qua user/pass
+
     return true;
 }
 
@@ -250,74 +271,66 @@ bool AIoT_L501::connectInternet4G(const String &apn, const String &user, const S
     if (!sendAT(cmd.c_str(), resp, 5000)) return false;
     return true;
 }
-//HTTP-HTTPS
-bool AIoT_L501::httpBegin() {
+
+// Liệt kê tất cả SMS
+String AIoT_L501::listAllSMS() {
     String resp;
-    return sendAT("AT$HTTPOPEN", resp, 2000) && resp.indexOf("OK") != -1;
-}
-void AIoT_L501::httpStop() {
-    String resp;
-    sendAT("AT$HTTPCLOSE", resp, 2000);
-}
-void AIoT_L501::parseUrl(const String &url, String &host, int &port, int &isHttps) { //Phân tích URL để tách Port và xác định HTTPS
-    isHttps = 0;
-    port = 80;
-    if (url.startsWith("https://")) {
-        isHttps = 1;
-        port = 443;
+    // Chuyển sang chế độ text
+    sendAT("AT+CMGF=1", resp, 2000);
+    // Chọn bộ nhớ SMS (SM = SIM, ME = Module)
+    sendAT("AT+CPMS=\"SM\",\"SM\",\"SM\"", resp, 3000);
+    // Liệt kê tất cả SMS (ALL = tất cả, REC UNREAD = chưa đọc, REC READ = đã đọc)
+    if (sendAT("AT+CMGL=\"ALL\"", resp, 10000)) {
+        return resp;
     }
-    host = url; 
+    return "";
 }
-String AIoT_L501::readHttpBody(uint32_t timeout) { //Đọc kết quả phản hồi từ Server
-    String data = "";
-    uint32_t start = millis();
-    bool capture = false;
-    while (millis() - start < timeout) {
-        if (serial_.available()) {
-            String line = serial_.readStringUntil('\n');
-            line.trim();
-            if (line.startsWith("$HTTPRECV:DATA")) {
-                capture = true;
-                continue; 
-            }
-            if (line.startsWith("$HTTPERROR")) {
-                return "ERROR: " + line;
-            }
-            if (capture) {
-                data += line + "\n";
+
+// Cập nhật hàm readSMS để chọn bộ nhớ trước
+String AIoT_L501::readSMS(int index) {
+    String resp;
+    // Chuyển sang chế độ text
+    sendAT("AT+CMGF=1", resp, 2000);
+    // Chọn bộ nhớ SMS
+    sendAT("AT+CPMS=\"SM\",\"SM\",\"SM\"", resp, 3000);
+    // Đọc SMS theo index
+    String cmd = "AT+CMGR=" + String(index);
+    if (sendAT(cmd.c_str(), resp, 5000)) {
+        // Kiểm tra lỗi
+        if (resp.indexOf("ERROR") != -1) {
+            return "";
+        }
+        // Trích xuất nội dung SMS
+        int idx = resp.indexOf("\r\n");
+        if (idx != -1) {
+            int idx2 = resp.indexOf("\r\n", idx + 2);
+            if (idx2 != -1) {
+                return resp.substring(idx + 2, idx2);
             }
         }
     }
-    if (data.length() == 0) return "TIMEOUT_OR_NO_DATA";
-    return data;
+    return "";
 }
-String AIoT_L501::httpGET(const String &url) { //Thực hiện GET
-    String host, resp;
-    int port, isHttps;
-    parseUrl(url, host, port, isHttps);
-    String cmdPara = "AT$HTTPPARA=\"" + host + "\"," + String(port) + "," + String(isHttps);
-    if (!sendAT(cmdPara.c_str(), resp, 2000) || resp.indexOf("OK") == -1) {
-        return "ERROR_CONFIG";
+
+String AIoT_L501::mqttReceive(uint32_t timeout) {
+    String data = readAT(timeout);
+    // Tìm dữ liệu từ topic: +MSUB: "topic","payload"
+    if (data.indexOf("+MSUB:") != -1) {
+        return data;
     }
-    serial_.println("AT$HTTPACTION=0");
-    return readHttpBody(15000);
+    return "";
 }
-String AIoT_L501::httpPOST(const String &url, const String &contentType, const String &data) { //Thực hiện POST
-    String host, resp;
-    int port, isHttps;
-    parseUrl(url, host, port, isHttps);
-    String cmdPara = "AT$HTTPPARA=\"" + host + "\"," + String(port) + "," + String(isHttps);
-    if (!sendAT(cmdPara.c_str(), resp, 2000) || resp.indexOf("OK") == -1) {
-        return "ERROR_CONFIG";
+
+String AIoT_L501::getIPAddress() {
+    String resp;
+    if (sendAT("AT+CGPADDR=1", resp, 5000)) {
+        int idx = resp.indexOf(",\"");
+        if (idx != -1) {
+            int idx2 = resp.indexOf("\"", idx + 2);
+            if (idx2 != -1) {
+                return resp.substring(idx + 2, idx2);
+            }
+        }
     }
-    String cmdType = "AT$HTTPRQH=\"Content-Type\",\"" + contentType + "\"";
-    sendAT(cmdType.c_str(), resp, 2000);
-    String cmdLen = "AT$HTTPRQH=\"Content-Length\",\"" + String(data.length()) + "\"";
-    sendAT(cmdLen.c_str(), resp, 2000);
-    String cmdData = "AT$HTTPDATAEX=" + String(data.length()) + ",\"" + data + "\"";
-    if (!sendAT(cmdData.c_str(), resp, 5000) || resp.indexOf("OK") == -1) {
-        return "ERROR_DATA_SET";
-    }
-    serial_.println("AT$HTTPACTION=3");
-    return readHttpBody(15000);
+    return "";
 }
