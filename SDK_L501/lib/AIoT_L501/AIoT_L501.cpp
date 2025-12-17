@@ -14,8 +14,8 @@ void AIoT_L501::begin() {
 bool AIoT_L501::init(unsigned long timeout) {
     // In logo AIoT
     Serial.println();
-    Serial.println("    ___    ____    _________");
-    Serial.println("   /   |  /  _/___/________/");
+    Serial.println("    ___    ____      _ _ _ _");
+    Serial.println("   /   |  /  _/ ____/_ _ _ /");
     Serial.println("  / /| |  / / / __ \\/ /    ");
     Serial.println(" / ___ |_/ / / /_/  / /     ");
     Serial.println("/_/  |_/___/ \\____/_/      ");
