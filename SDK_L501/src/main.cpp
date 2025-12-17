@@ -5,20 +5,17 @@
 AIoT_L501 aiot(Serial2, 115200);
 
 void setup() {
-    Serial.begin(115200); // Serial debug
-    aiot.begin();
-    delay(1000); // Đợi module khởi động
+    Serial.begin(115200);
+    delay(1000);
 
-    String resp;
-    if (aiot.sendAT("AT", resp)) {
-        Serial.println("SIMCom L501 OK:");
-        Serial.println(resp);
+    // Gọi hàm init() - sẽ in logo AIoT và kiểm tra AT, AT+CSQ, AT+CPIN?
+    if (aiot.init(10000)) {
+        Serial.println("Module sẵn sàng!");
     } else {
-        Serial.println("SIMCom L501 ERROR:");
-        Serial.println(resp);
+        Serial.println("Khởi tạo module thất bại!");
     }
 }
 
 void loop() {
-    // Có thể gửi thêm lệnh AT ở đây nếu muốn
+    // Code chính ở đây
 }
