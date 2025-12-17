@@ -29,10 +29,17 @@ public:
     bool activatePDP(int cid = 1); // Kích hoạt PDP context (bắt đầu truyền dữ liệu)
     bool deactivatePDP(int cid = 1); // Ngắt PDP context (ngắt truyền dữ liệu)
     bool connectInternet4G(const String &apn, const String &user = "", const String &pass = "", int cid = 1); // Kết nối Internet 4G (gộp các bước)
+    //HTTP-HTTPS
+    bool httpBegin();//Mở HTTP
+    void httpStop();//Đóng HTTP
+    String httpGET(const String &url);//GET
+    String httpPOST(const String &url, const String &contentType, const String &data);//POST
     // Tự động reconnect khi mất mạng
     bool ensureNetwork(uint8_t retry = 3, uint32_t interval = 5000); // Tự động kiểm tra và kết nối lại mạng nếu mất
     String readAT(uint32_t timeout = 2000); // Đọc phản hồi từ module SIM
 private:
     HardwareSerial &serial_; // Đối tượng Serial dùng để giao tiếp với module
     uint32_t baud_; // Tốc độ baudrate
+    void parseUrl(const String &url, String &host, int &port, int &isHttps); //Phân tích URL tách Port, xác định HTTPS
+    String readHttpBody(uint32_t timeout);// Đọc kết quả phản hồi từ Server
 };
