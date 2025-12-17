@@ -5,6 +5,7 @@ class AIoT_L501 {
 public:
     AIoT_L501(HardwareSerial &serial, uint32_t baud = 115200); // Khởi tạo đối tượng với Serial và baudrate
     void begin(); // Khởi động Serial
+    bool init(unsigned long timeout = 10000); // Khởi tạo module với thời gian chờ tối đa
     
     // AT Command
     bool sendAT(const char *cmd, String &response, uint32_t timeout = 2000); // Gửi lệnh AT và nhận phản hồi

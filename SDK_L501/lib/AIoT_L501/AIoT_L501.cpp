@@ -1,26 +1,109 @@
 #include "AIoT_L501.h"
 
+// ============================================================================
+// CONSTRUCTOR & KHỞI TẠO
+// ============================================================================
+
 AIoT_L501::AIoT_L501(HardwareSerial &serial, uint32_t baud)
     : serial_(serial), baud_(baud) {}
-
-// Tự động reconnect khi mất mạng
-bool AIoT_L501::ensureNetwork(uint8_t retry, uint32_t interval) {
-    for (uint8_t i = 0; i < retry; ++i) {
-        if (isSimReady() && isNetworkRegistered()) {
-            return true;
-        }
-        // Thử gắn lại GPRS nếu chưa đăng ký mạng
-        String resp;
-        sendAT("AT+CFUN=1", resp, 3000); // Đảm bảo module ở chế độ full chức năng
-        sendAT("AT+CGATT=1", resp, 5000); // Gắn lại mạng
-        delay(interval);
-    }
-    return false;
-}
 
 void AIoT_L501::begin() {
     serial_.begin(baud_);
 }
+
+bool AIoT_L501::init(unsigned long timeout) {
+    // In logo AIoT
+    Serial.println();
+    Serial.println("    ___    ____    ______");
+    Serial.println("   /   |  /  _/___/_  __/");
+    Serial.println("  / /| |  / / / __ \\/ /   ");
+    Serial.println(" / ___ |_/ / / /_/ / /    ");
+    Serial.println("/_/  |_/___/ \\____/_/     ");
+    Serial.println();
+    Serial.println("╔═══════════════════════════════════════════════════════╗");
+    Serial.println("║           AIoT L501 SDK - ESP32 + 4G Module           ║");
+    Serial.println("║                   Version: 1.0                        ║");
+    Serial.println("║              Author: AIoT                             ║");
+    Serial.println("╚═══════════════════════════════════════════════════════╝");
+    Serial.println();
+
+    // Khởi tạo Serial cho module
+    serial_.begin(baud_);
+
+    String resp;
+
+    // ========== Kiểm tra AT ==========
+    Serial.print("[AIoT] AT -> ");
+    unsigned long start = millis();
+    bool moduleReady = false;
+    while (millis() - start < timeout) {
+        if (sendAT("AT", resp, 1000)) {
+            moduleReady = true;
+            break;
+        }
+        delay(500);
+    }
+    if (moduleReady) {
+        Serial.println("OK");
+    } else {
+        Serial.println("FAILED");
+        return false;
+    }
+
+    // Tắt echo
+    sendAT("ATE0", resp, 1000);
+
+    // ========== Kiểm tra AT+CSQ (Chất lượng tín hiệu) ==========
+    Serial.print("[AIoT] AT+CSQ -> ");
+    if (sendAT("AT+CSQ", resp, 2000)) {
+        int idx = resp.indexOf("+CSQ:");
+        if (idx != -1) {
+            int end = resp.indexOf("\r\n", idx);
+            if (end != -1) {
+                String csq = resp.substring(idx, end);
+                Serial.println(csq);
+            } else {
+                Serial.println("OK");
+            }
+        } else {
+            Serial.println("OK");
+        }
+    } else {
+        Serial.println("FAILED");
+    }
+
+    // ========== Kiểm tra AT+CPIN? (Khe cắm SIM) ==========
+    Serial.print("[AIoT] AT+CPIN? -> ");
+    if (sendAT("AT+CPIN?", resp, 2000)) {
+        int idx = resp.indexOf("+CPIN:");
+        if (idx != -1) {
+            int end = resp.indexOf("\r\n", idx);
+            if (end != -1) {
+                String cpin = resp.substring(idx, end);
+                Serial.println(cpin);
+            } else {
+                Serial.println("OK");
+            }
+        } else {
+            Serial.println("OK");
+        }
+    } else {
+        Serial.println("FAILED (Không có SIM hoặc SIM lỗi)");
+        return false;
+    }
+
+    Serial.println();
+    Serial.println("╔═══════════════════════════════════════════════════════╗");
+    Serial.println("║            ✓ KHỞI TẠO MODULE THÀNH CÔNG!              ║");
+    Serial.println("╚═══════════════════════════════════════════════════════╝");
+    Serial.println();
+
+    return true;
+}
+
+// ============================================================================
+// LỆNH AT CƠ BẢN
+// ============================================================================
 
 bool AIoT_L501::sendAT(const char *cmd, String &response, uint32_t timeout) {
     serial_.println(cmd);
@@ -53,9 +136,13 @@ String AIoT_L501::readAT(uint32_t timeout) {
     return response;
 }
 
+// ============================================================================
+// TRẠNG THÁI MODULE & SIM
+// ============================================================================
+
 bool AIoT_L501::isSimReady() {
     String resp;
-    if (sendAT("AT+CPIN?", resp)) {
+    if (sendAT("AT+CPIN?", resp, 2000)) {
         return resp.indexOf("READY") != -1;
     }
     return false;
@@ -63,8 +150,7 @@ bool AIoT_L501::isSimReady() {
 
 bool AIoT_L501::isNetworkRegistered() {
     String resp;
-    if (sendAT("AT+CREG?", resp)) {
-        // Tìm "+CREG: x,1" hoặc "+CREG: x,5" (đã đăng ký mạng)
+    if (sendAT("AT+CREG?", resp, 2000)) {
         return resp.indexOf(",1") != -1 || resp.indexOf(",5") != -1;
     }
     return false;
@@ -80,8 +166,7 @@ bool AIoT_L501::isDataConnected() {
 
 String AIoT_L501::getIMEI() {
     String resp;
-    if (sendAT("AT+GSN", resp)) {
-        // IMEI thường nằm ở dòng thứ 2
+    if (sendAT("AT+GSN", resp, 2000)) {
         int idx = resp.indexOf("\r\n");
         if (idx != -1) {
             int idx2 = resp.indexOf("\r\n", idx + 2);
@@ -93,158 +178,65 @@ String AIoT_L501::getIMEI() {
     return "";
 }
 
-bool AIoT_L501::sendSMS(const String &phone, const String &message) {
-    String resp;
-    if (!sendAT("AT+CMGF=1", resp)) return false; // Chuyển sang chế độ text
-    serial_.print("AT+CMGS=\"");
-    serial_.print(phone);
-    serial_.println("\"");
-    delay(100);
-    serial_.print(message);
-    serial_.write(26); // Ctrl+Z kết thúc tin nhắn
-    uint32_t start = millis();
-    resp = "";
-    while (millis() - start < 10000) { // Đợi tối đa 10 giây
-        while (serial_.available()) {
-            char c = serial_.read();
-            resp += c;
-            if (resp.indexOf("OK") != -1) return true;
-            if (resp.indexOf("ERROR") != -1) return false;
-        }
-    }
-    return false;
-}
-
-bool AIoT_L501::call(const String &phone) {
-    String resp;
-    String cmd = "ATD" + phone + ";";
-    if (sendAT(cmd.c_str(), resp)) {
-        // Nếu nhận OK thì bắt đầu gọi
-        return resp.indexOf("OK") != -1;
-    }
-    return false;
-}
-
-bool AIoT_L501::hangUp() {
-    String resp;
-    return sendAT("ATH", resp);
-}
-
-bool AIoT_L501::answerCall() {
-    String resp;
-    return sendAT("ATA", resp);
-}
-
 int AIoT_L501::getSignalQuality() {
     String resp;
-    if (sendAT("AT+CSQ", resp)) {
+    if (sendAT("AT+CSQ", resp, 2000)) {
         int idx = resp.indexOf("+CSQ:");
         if (idx != -1) {
             int comma = resp.indexOf(",", idx);
             if (comma != -1) {
                 String rssi = resp.substring(idx + 6, comma);
-                return rssi.toInt(); // Giá trị RSSI (0-31, 99: không xác định)
+                return rssi.toInt();
             }
         }
     }
-    return -1; // Lỗi hoặc không xác định
+    return -1;
 }
 
 String AIoT_L501::getModuleInfo() {
     String resp;
-    if (sendAT("ATI", resp)) {
+    if (sendAT("ATI", resp, 2000)) {
         return resp;
     }
     return "";
 }
 
-bool AIoT_L501::mqttConfig(const String &clientId, const String &username, const String &password) {
+String AIoT_L501::getIPAddress() {
     String resp;
-    String cmd = "AT+MCONFIG=\"" + clientId + "\"";
-    if (username.length() > 0) {
-        cmd += ",\"" + username + "\"";
-        if (password.length() > 0) {
-            cmd += ",\"" + password + "\"";
-        }
-    }
-    return sendAT(cmd.c_str(), resp, 5000);
-}
-
-bool AIoT_L501::mqttSetServer(const String &address, int port, int version) {
-    String resp;
-    String cmd = "AT+MIPSTART=\"" + address + "\"," + String(port) + "," + String(version);
-    // Cần timeout dài hơn và kiểm tra SUCCESS
-    if (!sendAT(cmd.c_str(), resp, 15000)) return false;
-    // Chờ thêm phản hồi +MIPSTART: SUCCESS
-    String resp2 = readAT(10000);
-    return resp2.indexOf("SUCCESS") != -1;
-}
-
-bool AIoT_L501::mqttConnect(int cleanSession, int keepalive) {
-    String resp;
-    String cmd = "AT+MCONNECT=" + String(cleanSession) + "," + String(keepalive);
-    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
-    // Chờ phản hồi +MCONNECT: SUCCESS
-    String resp2 = readAT(10000);
-    return resp2.indexOf("SUCCESS") != -1;
-}
-
-bool AIoT_L501::mqttPublish(const String &topic, const String &payload, int qos, int retain) {
-    String resp;
-    String cmd = "AT+MPUB=\"" + topic + "\"," + String(qos) + "," + String(retain) + ",\"" + payload + "\"";
-    return sendAT(cmd.c_str(), resp, 10000) && resp.indexOf("SUCCESS") != -1;
-}
-
-bool AIoT_L501::mqttSubscribe(const String &topic, int qos) {
-    String resp;
-    String cmd = "AT+MSUB=\"" + topic + "\"," + String(qos);
-    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
-    String resp2 = readAT(10000);
-    return resp2.indexOf("SUCCESS") != -1;
-}
-
-bool AIoT_L501::mqttUnsubscribe(const String &topic) {
-    String resp;
-    String cmd = "AT+MUNSUB=\"" + topic + "\"";
-    return sendAT(cmd.c_str(), resp, 10000) && resp.indexOf("SUCCESS") != -1;
-}
-
-bool AIoT_L501::mqttDisconnect() {
-    String resp;
-    if (!sendAT("AT+MDISCONNECT", resp, 5000)) return false;
-    String resp2 = readAT(5000);
-    return resp2.indexOf("SUCCESS") != -1;
-}
-
-bool AIoT_L501::mqttClose() {
-    String resp;
-    if (!sendAT("AT+MIPCLOSE", resp, 5000)) return false;
-    String resp2 = readAT(5000);
-    return resp2.indexOf("SUCCESS") != -1;
-}
-
-int AIoT_L501::mqttStatus() {
-    String resp;
-    if (sendAT("AT+MQTTSTATU", resp, 2000)) {
-        int idx = resp.indexOf("+MQTTSTATU:");
+    if (sendAT("AT+CGPADDR=1", resp, 5000)) {
+        int idx = resp.indexOf(",\"");
         if (idx != -1) {
-            int end = resp.indexOf("\r\n", idx);
-            String status = resp.substring(idx + 11, end);
-            status.trim();
-            return status.toInt();
+            int idx2 = resp.indexOf("\"", idx + 2);
+            if (idx2 != -1) {
+                return resp.substring(idx + 2, idx2);
+            }
         }
     }
-    return 0;
+    return "";
+}
+
+// ============================================================================
+// KẾT NỐI MẠNG 4G
+// ============================================================================
+
+bool AIoT_L501::ensureNetwork(uint8_t retry, uint32_t interval) {
+    for (uint8_t i = 0; i < retry; ++i) {
+        if (isSimReady() && isNetworkRegistered()) {
+            return true;
+        }
+        String resp;
+        sendAT("AT+CFUN=1", resp, 3000);
+        sendAT("AT+CGATT=1", resp, 5000);
+        delay(interval);
+    }
+    return false;
 }
 
 bool AIoT_L501::attachGPRS(const String &apn, const String &user, const String &pass) {
     String resp;
-    // Gắn mạng
     if (!sendAT("AT+CGATT=1", resp, 5000)) return false;
-    // Thiết lập APN
     String cmd = "AT+CGDCONT=1,\"IP\",\"" + apn + "\"";
     if (!sendAT(cmd.c_str(), resp, 5000)) return false;
-
     return true;
 }
 
@@ -262,45 +254,49 @@ bool AIoT_L501::deactivatePDP(int cid) {
 
 bool AIoT_L501::connectInternet4G(const String &apn, const String &user, const String &pass, int cid) {
     String resp;
-    // Gắn mạng GPRS và thiết lập APN
     if (!sendAT("AT+CGATT=1", resp, 5000)) return false;
     String cmd = "AT+CGDCONT=" + String(cid) + ",\"IP\",\"" + apn + "\"";
     if (!sendAT(cmd.c_str(), resp, 5000)) return false;
-    // Kích hoạt PDP context
     cmd = "AT+CGACT=1," + String(cid);
     if (!sendAT(cmd.c_str(), resp, 5000)) return false;
     return true;
 }
 
-// Liệt kê tất cả SMS
-String AIoT_L501::listAllSMS() {
+// ============================================================================
+// SMS
+// ============================================================================
+
+bool AIoT_L501::sendSMS(const String &phone, const String &message) {
     String resp;
-    // Chuyển sang chế độ text
-    sendAT("AT+CMGF=1", resp, 2000);
-    // Chọn bộ nhớ SMS (SM = SIM, ME = Module)
-    sendAT("AT+CPMS=\"SM\",\"SM\",\"SM\"", resp, 3000);
-    // Liệt kê tất cả SMS (ALL = tất cả, REC UNREAD = chưa đọc, REC READ = đã đọc)
-    if (sendAT("AT+CMGL=\"ALL\"", resp, 10000)) {
-        return resp;
+    if (!sendAT("AT+CMGF=1", resp, 2000)) return false;
+    serial_.print("AT+CMGS=\"");
+    serial_.print(phone);
+    serial_.println("\"");
+    delay(100);
+    serial_.print(message);
+    serial_.write(26);
+    uint32_t start = millis();
+    resp = "";
+    while (millis() - start < 10000) {
+        while (serial_.available()) {
+            char c = serial_.read();
+            resp += c;
+            if (resp.indexOf("OK") != -1) return true;
+            if (resp.indexOf("ERROR") != -1) return false;
+        }
     }
-    return "";
+    return false;
 }
 
-// Cập nhật hàm readSMS để chọn bộ nhớ trước
 String AIoT_L501::readSMS(int index) {
     String resp;
-    // Chuyển sang chế độ text
     sendAT("AT+CMGF=1", resp, 2000);
-    // Chọn bộ nhớ SMS
     sendAT("AT+CPMS=\"SM\",\"SM\",\"SM\"", resp, 3000);
-    // Đọc SMS theo index
     String cmd = "AT+CMGR=" + String(index);
     if (sendAT(cmd.c_str(), resp, 5000)) {
-        // Kiểm tra lỗi
         if (resp.indexOf("ERROR") != -1) {
             return "";
         }
-        // Trích xuất nội dung SMS
         int idx = resp.indexOf("\r\n");
         if (idx != -1) {
             int idx2 = resp.indexOf("\r\n", idx + 2);
@@ -312,25 +308,126 @@ String AIoT_L501::readSMS(int index) {
     return "";
 }
 
-String AIoT_L501::mqttReceive(uint32_t timeout) {
-    String data = readAT(timeout);
-    // Tìm dữ liệu từ topic: +MSUB: "topic","payload"
-    if (data.indexOf("+MSUB:") != -1) {
-        return data;
+String AIoT_L501::listAllSMS() {
+    String resp;
+    sendAT("AT+CMGF=1", resp, 2000);
+    sendAT("AT+CPMS=\"SM\",\"SM\",\"SM\"", resp, 3000);
+    if (sendAT("AT+CMGL=\"ALL\"", resp, 10000)) {
+        return resp;
     }
     return "";
 }
 
-String AIoT_L501::getIPAddress() {
+// ============================================================================
+// CUỘC GỌI
+// ============================================================================
+
+bool AIoT_L501::call(const String &phone) {
     String resp;
-    if (sendAT("AT+CGPADDR=1", resp, 5000)) {
-        int idx = resp.indexOf(",\"");
+    String cmd = "ATD" + phone + ";";
+    return sendAT(cmd.c_str(), resp, 5000);
+}
+
+bool AIoT_L501::hangUp() {
+    String resp;
+    return sendAT("ATH", resp, 2000);
+}
+
+bool AIoT_L501::answerCall() {
+    String resp;
+    return sendAT("ATA", resp, 2000);
+}
+
+// ============================================================================
+// MQTT
+// ============================================================================
+
+bool AIoT_L501::mqttConfig(const String &clientId, const String &username, const String &password) {
+    String resp;
+    String cmd = "AT+MCONFIG=\"" + clientId + "\"";
+    if (username.length() > 0) {
+        cmd += ",\"" + username + "\"";
+        if (password.length() > 0) {
+            cmd += ",\"" + password + "\"";
+        }
+    }
+    return sendAT(cmd.c_str(), resp, 5000);
+}
+
+bool AIoT_L501::mqttSetServer(const String &address, int port, int version) {
+    String resp;
+    String cmd = "AT+MIPSTART=\"" + address + "\"," + String(port) + "," + String(version);
+    if (!sendAT(cmd.c_str(), resp, 15000)) return false;
+    String resp2 = readAT(10000);
+    return (resp.indexOf("SUCCESS") != -1) || (resp2.indexOf("SUCCESS") != -1);
+}
+
+bool AIoT_L501::mqttConnect(int cleanSession, int keepalive) {
+    String resp;
+    String cmd = "AT+MCONNECT=" + String(cleanSession) + "," + String(keepalive);
+    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
+    String resp2 = readAT(10000);
+    return (resp.indexOf("SUCCESS") != -1) || (resp2.indexOf("SUCCESS") != -1);
+}
+
+bool AIoT_L501::mqttPublish(const String &topic, const String &payload, int qos, int retain) {
+    String resp;
+    String cmd = "AT+MPUB=\"" + topic + "\"," + String(qos) + "," + String(retain) + ",\"" + payload + "\"";
+    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
+    String resp2 = readAT(5000);
+    return (resp.indexOf("SUCCESS") != -1) || (resp2.indexOf("SUCCESS") != -1);
+}
+
+bool AIoT_L501::mqttSubscribe(const String &topic, int qos) {
+    String resp;
+    String cmd = "AT+MSUB=\"" + topic + "\"," + String(qos);
+    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
+    String resp2 = readAT(5000);
+    return (resp.indexOf("SUCCESS") != -1) || (resp2.indexOf("SUCCESS") != -1);
+}
+
+bool AIoT_L501::mqttUnsubscribe(const String &topic) {
+    String resp;
+    String cmd = "AT+MUNSUB=\"" + topic + "\"";
+    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
+    String resp2 = readAT(5000);
+    return (resp.indexOf("SUCCESS") != -1) || (resp2.indexOf("SUCCESS") != -1);
+}
+
+bool AIoT_L501::mqttDisconnect() {
+    String resp;
+    if (!sendAT("AT+MDISCONNECT", resp, 5000)) return false;
+    String resp2 = readAT(5000);
+    return (resp.indexOf("SUCCESS") != -1) || (resp2.indexOf("SUCCESS") != -1);
+}
+
+bool AIoT_L501::mqttClose() {
+    String resp;
+    if (!sendAT("AT+MIPCLOSE", resp, 5000)) return false;
+    String resp2 = readAT(5000);
+    return (resp.indexOf("SUCCESS") != -1) || (resp2.indexOf("SUCCESS") != -1);
+}
+
+int AIoT_L501::mqttStatus() {
+    String resp;
+    if (sendAT("AT+MQTTSTATU", resp, 2000)) {
+        int idx = resp.indexOf("+MQTTSTATU:");
         if (idx != -1) {
-            int idx2 = resp.indexOf("\"", idx + 2);
-            if (idx2 != -1) {
-                return resp.substring(idx + 2, idx2);
+            int end = resp.indexOf("\r\n", idx);
+            if (end != -1) {
+                String status = resp.substring(idx + 11, end);
+                status.trim();
+                return status.toInt();
             }
         }
+    }
+    return 0;
+}
+
+String AIoT_L501::mqttReceive(uint32_t timeout) {
+    String data = readAT(timeout);
+    if (data.indexOf("+MSUB:") != -1) {
+        return data;
     }
     return "";
 }
