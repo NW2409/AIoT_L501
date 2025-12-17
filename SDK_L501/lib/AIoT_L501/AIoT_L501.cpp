@@ -250,3 +250,74 @@ bool AIoT_L501::connectInternet4G(const String &apn, const String &user, const S
     if (!sendAT(cmd.c_str(), resp, 5000)) return false;
     return true;
 }
+//HTTP-HTTPS
+bool AIoT_L501::httpBegin() {
+    String resp;
+    return sendAT("AT$HTTPOPEN", resp, 2000) && resp.indexOf("OK") != -1;
+}
+void AIoT_L501::httpStop() {
+    String resp;
+    sendAT("AT$HTTPCLOSE", resp, 2000);
+}
+void AIoT_L501::parseUrl(const String &url, String &host, int &port, int &isHttps) { //Phân tích URL để tách Port và xác định HTTPS
+    isHttps = 0;
+    port = 80;
+    if (url.startsWith("https://")) {
+        isHttps = 1;
+        port = 443;
+    }
+    host = url; 
+}
+String AIoT_L501::readHttpBody(uint32_t timeout) { //Đọc kết quả phản hồi từ Server
+    String data = "";
+    uint32_t start = millis();
+    bool capture = false;
+    while (millis() - start < timeout) {
+        if (serial_.available()) {
+            String line = serial_.readStringUntil('\n');
+            line.trim();
+            if (line.startsWith("$HTTPRECV:DATA")) {
+                capture = true;
+                continue; 
+            }
+            if (line.startsWith("$HTTPERROR")) {
+                return "ERROR: " + line;
+            }
+            if (capture) {
+                data += line + "\n";
+            }
+        }
+    }
+    if (data.length() == 0) return "TIMEOUT_OR_NO_DATA";
+    return data;
+}
+String AIoT_L501::httpGET(const String &url) { //Thực hiện GET
+    String host, resp;
+    int port, isHttps;
+    parseUrl(url, host, port, isHttps);
+    String cmdPara = "AT$HTTPPARA=\"" + host + "\"," + String(port) + "," + String(isHttps);
+    if (!sendAT(cmdPara.c_str(), resp, 2000) || resp.indexOf("OK") == -1) {
+        return "ERROR_CONFIG";
+    }
+    serial_.println("AT$HTTPACTION=0");
+    return readHttpBody(15000);
+}
+String AIoT_L501::httpPOST(const String &url, const String &contentType, const String &data) { //Thực hiện POST
+    String host, resp;
+    int port, isHttps;
+    parseUrl(url, host, port, isHttps);
+    String cmdPara = "AT$HTTPPARA=\"" + host + "\"," + String(port) + "," + String(isHttps);
+    if (!sendAT(cmdPara.c_str(), resp, 2000) || resp.indexOf("OK") == -1) {
+        return "ERROR_CONFIG";
+    }
+    String cmdType = "AT$HTTPRQH=\"Content-Type\",\"" + contentType + "\"";
+    sendAT(cmdType.c_str(), resp, 2000);
+    String cmdLen = "AT$HTTPRQH=\"Content-Length\",\"" + String(data.length()) + "\"";
+    sendAT(cmdLen.c_str(), resp, 2000);
+    String cmdData = "AT$HTTPDATAEX=" + String(data.length()) + ",\"" + data + "\"";
+    if (!sendAT(cmdData.c_str(), resp, 5000) || resp.indexOf("OK") == -1) {
+        return "ERROR_DATA_SET";
+    }
+    serial_.println("AT$HTTPACTION=3");
+    return readHttpBody(15000);
+}
