@@ -14,11 +14,11 @@ void AIoT_L501::begin() {
 bool AIoT_L501::init(unsigned long timeout) {
     // In logo AIoT
     Serial.println();
-    Serial.println("    ___    ____    ______");
-    Serial.println("   /   |  /  _/___/_  __/");
-    Serial.println("  / /| |  / / / __ \\/ /   ");
-    Serial.println(" / ___ |_/ / / /_/ / /    ");
-    Serial.println("/_/  |_/___/ \\____/_/     ");
+    Serial.println("    ___    ____    _________");
+    Serial.println("   /   |  /  _/___/________/");
+    Serial.println("  / /| |  / / / __ \\/ /    ");
+    Serial.println(" / ___ |_/ / / /_/  / /     ");
+    Serial.println("/_/  |_/___/ \\____/_/      ");
     Serial.println();
     Serial.println("╔═══════════════════════════════════════════════════════╗");
     Serial.println("║           AIoT L501 SDK - ESP32 + 4G Module           ║");
