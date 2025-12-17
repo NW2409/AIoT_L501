@@ -23,7 +23,7 @@ bool AIoT_L501::init(unsigned long timeout) {
     Serial.println("╔═══════════════════════════════════════════════════════╗");
     Serial.println("║           AIoT L501 SDK - ESP32 + 4G Module           ║");
     Serial.println("║                   Version: 1.0                        ║");
-    Serial.println("║              Author: AIoT                             ║");
+    Serial.println("║                   Author: AIoT                        ║");
     Serial.println("╚═══════════════════════════════════════════════════════╝");
     Serial.println();
 
