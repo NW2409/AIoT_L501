@@ -102,7 +102,7 @@ public:
 
     /**
      * @brief Gắn kết GPRS với APN
-     * @param apn Tên APN (VD: "v-internet", "m-wap")
+     * @param apn Tên APN (VD: "v-internet"(Viettel), "m-wap")
      * @param user Tên người dùng, mặc định rỗng
      * @param pass Mật khẩu, mặc định rỗng
      * @return true nếu thành công, false nếu thất bại
