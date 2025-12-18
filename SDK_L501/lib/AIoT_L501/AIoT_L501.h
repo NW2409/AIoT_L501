@@ -48,7 +48,13 @@ public:
     bool mqttClose(); // Đóng kết nối MQTT
     int mqttStatus(); // Lấy trạng thái MQTT
     String mqttReceive(uint32_t timeout = 5000); // ← Nhận dữ liệu từ MQTT
-
+ //HTTP-HTTPS
+    bool httpBegin();//Mở HTTP
+    void httpStop();//Đóng HTTP
+    String httpGET(const String &url);//GET
+    String httpPOST(const String &url, const String &contentType, const String &data);//POST
+    void parseUrl(const String &url, String &host, int &port, int &isHttps); //Phân tích URL tách Port, xác định HTTPS
+    String readHttpBody(uint32_t timeout);// Đọc kết quả phản hồi từ Server
 private:
     HardwareSerial &serial_; // Đối tượng Serial dùng để giao tiếp với module
     uint32_t baud_; // Tốc độ baudrate
