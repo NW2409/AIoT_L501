@@ -47,7 +47,7 @@ public:
     bool mqttDisconnect(); // Ngắt kết nối MQTT
     bool mqttClose(); // Đóng kết nối MQTT
     int mqttStatus(); // Lấy trạng thái MQTT
-    String mqttReceive(uint32_t timeout = 5000); // ← Nhận dữ liệu từ MQTT
+    String mqttReceive(uint32_t timeout); // ← Nhận dữ liệu từ MQTT
  //HTTP-HTTPS
     bool httpBegin();//Mở HTTP
     void httpStop();//Đóng HTTP
