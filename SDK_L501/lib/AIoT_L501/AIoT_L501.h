@@ -12,11 +12,11 @@ public:
     String readAT(uint32_t timeout = 2000); // Đọc phản hồi từ module SIM
     
     // Trạng thái
-    bool isSimReady(); // Kiểm tra trạng thái SIM (đã sẵn sàng chưa)
+    bool isSimReady(); // Kiểm tra trạng thái SIM
     bool isNetworkRegistered(); // Kiểm tra đã đăng ký mạng di động chưa
     String getIMEI(); // Lấy số IMEI của module
-    int getSignalQuality(); // Lấy chất lượng tín hiệu mạng (RSSI)
-    String getModuleInfo(); // Lấy thông tin module (phiên bản, tên, ...)
+    int getSignalQuality(); // Lấy chất lượng tín hiệu mạng
+    String getModuleInfo(); // Lấy thông tin module
     
     // Kết nối mạng
     bool ensureNetwork(uint8_t retry = 3, uint32_t interval = 5000); // Tự động kiểm tra và kết nối lại mạng nếu mất
@@ -24,8 +24,8 @@ public:
     bool activatePDP(int cid = 1); // Kích hoạt PDP context (bắt đầu truyền dữ liệu)
     bool deactivatePDP(int cid = 1); // Ngắt PDP context (ngắt truyền dữ liệu)
     bool connectInternet4G(const String &apn, const String &user = "", const String &pass = "", int cid = 1); // Kết nối Internet 4G (gộp các bước)
-    String getIPAddress();           // ← lấy IP
-    bool isDataConnected();          // ← KIỂM TRA KẾT NỐI DỮ LIỆU
+    String getIPAddress();           // lấy IP
+    bool isDataConnected();          // KIỂM TRA KẾT NỐI DỮ LIỆU
     
     // SMS
     bool sendSMS(const String &phone, const String &message); // Gửi tin nhắn SMS
