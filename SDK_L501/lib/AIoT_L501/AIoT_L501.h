@@ -64,11 +64,6 @@ public:
      */
     bool isDataConnected();
 
-    /**
-     * @brief Lấy số IMEI của module
-     * @return Chuỗi IMEI, rỗng nếu thất bại
-     */
-    String getIMEI();
 
     /**
      * @brief Lấy chất lượng tín hiệu (CSQ)
@@ -102,7 +97,7 @@ public:
 
     /**
      * @brief Gắn kết GPRS với APN
-     * @param apn Tên APN (VD: "v-internet"(Viettel), "m-wap")
+     * @param apn Tên APN (VD: "v-internet", "m-wap")
      * @param user Tên người dùng, mặc định rỗng
      * @param pass Mật khẩu, mặc định rỗng
      * @return true nếu thành công, false nếu thất bại
@@ -134,6 +129,12 @@ public:
      * @return true nếu thành công, false nếu thất bại
      */
     bool netClose();
+
+    /**
+     * @brief Kiểm tra trạng thái NETOPEN
+     * @return true nếu đang mở kết nối mạng, false nếu không
+     */
+    bool netIsOpen(); // mới: kiểm tra trạng thái NETOPEN
 
     /**
      * @brief Kết nối Internet 4G đầy đủ (CGATT + CGDCONT + CGACT + NETOPEN)
@@ -402,12 +403,21 @@ public:
      */
     bool isTcpConnected(int socketId);
 
+    /**
+     * @brief Đổi baudrate cho cả module SIM (AT+IPR) và UART ESP32
+     * @param baud Baudrate mới (ví dụ 9600, 115200)
+     * @param timeout Thời gian chờ OK cho AT+IPR (ms), mặc định 3000ms
+     * @return true nếu đổi thành công và bắt tay lại "AT" OK, false nếu thất bại (tự rollback UART)
+     */
+    bool setBaudrate(uint32_t baud, uint32_t timeout = 3000);
+
+    /**
+     * @brief Lấy baudrate hiện tại của SDK
+     */
+    uint32_t getBaudrate() const;
+
 private:
     HardwareSerial &serial_;
     uint32_t baud_;
-
-    /**
-     * @brief Xóa buffer Serial trước khi gửi lệnh AT
-     */
     void clearBuffer();
 };

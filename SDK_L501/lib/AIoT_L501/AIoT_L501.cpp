@@ -14,11 +14,11 @@ void AIoT_L501::begin() {
 bool AIoT_L501::init(unsigned long timeout) {
     // In logo AIoT
     Serial.println();
-    Serial.println("    ___    ____    _________");
-    Serial.println("   /   |  /  _/___/___  ___/");
-    Serial.println("  / /| |  / / / __ \\/ /    ");
-    Serial.println(" / ___ |_/ / / /_/  / /    ");
-    Serial.println("/_/  |_/___/ \\____/_/     ");
+    Serial.println("                ___    ____    _________");
+    Serial.println("               /   |  /  _/___/___  ___/");
+    Serial.println("              / /| |  / / / __ \\/ /    ");
+    Serial.println("             / ___ |_/ / / /_/ / /    ");
+    Serial.println("            /_/  |_/___/ \\____/_/     ");
     Serial.println();
     Serial.println("╔═══════════════════════════════════════════════════════╗");
     Serial.println("║           AIoT L501 SDK - ESP32 + 4G Module           ║");
@@ -74,7 +74,7 @@ bool AIoT_L501::init(unsigned long timeout) {
 
     // ========== Kiểm tra AT+CPIN? (Khe cắm SIM) ==========
     Serial.print("[AIoT] AT+CPIN? -> ");
-    if (sendAT("AT+CPIN?", resp, 2000)) {
+    if (sendAT("AT+CPIN?", resp, 3000)) {
         int idx = resp.indexOf("+CPIN:");
         if (idx != -1) {
             int end = resp.indexOf("\r\n", idx);
@@ -114,7 +114,7 @@ void AIoT_L501::clearBuffer() {
 
 bool AIoT_L501::sendAT(const char *cmd, String &response, uint32_t timeout) {
     // Xóa buffer trước khi gửi
-    clearBuffer();
+    //clearBuffer();
     
     serial_.println(cmd);
     uint32_t start = millis();
@@ -146,6 +146,43 @@ String AIoT_L501::readAT(uint32_t timeout) {
     return response;
 }
 
+bool AIoT_L501::setBaudrate(uint32_t baud, uint32_t timeout) {
+    String resp;
+    uint32_t oldBaud = baud_;
+
+    // Bắt tay trước khi đổi
+    sendAT("AT", resp, 500);
+
+    // Đổi baudrate trên module SIM
+    String cmd = "AT+IPR=" + String(baud);
+    if (!sendAT(cmd.c_str(), resp, timeout)) {
+        return false;
+    }
+
+    // Đổi UART ESP32 sang baud mới
+    baud_ = baud;
+    serial_.begin(baud_);
+
+    // Bắt tay lại xác nhận liên kết hoạt động ở baud mới
+    unsigned long start = millis();
+    bool ok = false;
+    while (millis() - start < 2000) {
+        if (sendAT("AT", resp, 300)) { ok = true; break; }
+        delay(100);
+    }
+    if (!ok) {
+        // Rollback UART nếu handshake thất bại
+        baud_ = oldBaud;
+        serial_.begin(baud_);
+        sendAT("AT", resp, 500);
+        return false;
+    }
+    return true;
+}
+
+uint32_t AIoT_L501::getBaudrate() const {
+    return baud_;
+}
 // ============================================================================
 // TRẠNG THÁI MODULE & SIM
 // ============================================================================
@@ -168,24 +205,29 @@ bool AIoT_L501::isNetworkRegistered() {
 
 bool AIoT_L501::isDataConnected() {
     String resp;
-    if (sendAT("AT+CGACT?", resp, 5000)) {
-        return resp.indexOf(",1") != -1;
-    }
-    return false;
-}
+    if (!sendAT("AT+CGACT?", resp, 5000)) return false;
 
-String AIoT_L501::getIMEI() {
-    String resp;
-    if (sendAT("AT+GSN", resp, 2000)) {
-        int idx = resp.indexOf("\r\n");
-        if (idx != -1) {
-            int idx2 = resp.indexOf("\r\n", idx + 2);
-            if (idx2 != -1) {
-                return resp.substring(idx + 2, idx2);
+    // Parse đúng từng dòng: +CGACT: <cid>,<status>
+    int pos = 0;
+    while ((pos = resp.indexOf("+CGACT:", pos)) != -1) {
+        int eol = resp.indexOf("\r\n", pos);
+        String line = (eol != -1) ? resp.substring(pos, eol) : resp.substring(pos);
+        line.trim();
+
+        int colon = line.indexOf(':');
+        if (colon != -1) {
+            String after = line.substring(colon + 1);
+            after.trim(); // "cid,status"
+            int comma = after.indexOf(',');
+            if (comma != -1) {
+                String statusStr = after.substring(comma + 1);
+                statusStr.trim();
+                if (statusStr == "1") return true; // có ít nhất 1 PDP active
             }
         }
+        pos = (eol != -1) ? eol : pos + 1;
     }
-    return "";
+    return false;
 }
 
 int AIoT_L501::getSignalQuality() {
@@ -213,16 +255,48 @@ String AIoT_L501::getModuleInfo() {
 
 String AIoT_L501::getIPAddress() {
     String resp;
-    if (sendAT("AT+CGPADDR=1", resp, 5000)) {
-        int idx = resp.indexOf(",\"");
-        if (idx != -1) {
-            int idx2 = resp.indexOf("\"", idx + 2);
-            if (idx2 != -1) {
-                return resp.substring(idx + 2, idx2);
-            }
+
+    // Thử hỏi theo CID=1 trước
+    bool ok = sendAT("AT+CGPADDR=1", resp, 2000);
+    if (!ok || resp.indexOf("+CGPADDR:") == -1) {
+        // Fallback: hỏi tất cả
+        sendAT("AT+CGPADDR", resp, 2000);
+    }
+
+    // Tìm địa chỉ nằm trong dấu nháy "..."
+    String ipv6 = "";
+    int pos = 0;
+    while (true) {
+        int q1 = resp.indexOf('\"', pos);
+        if (q1 == -1) break;
+        int q2 = resp.indexOf('\"', q1 + 1);
+        if (q2 == -1) break;
+        String tok = resp.substring(q1 + 1, q2);
+        tok.trim();
+
+        bool isIPv4 = (tok.indexOf('.') != -1) && (tok.indexOf(':') == -1);
+        bool isIPv6 = (tok.indexOf(':') != -1);
+
+        if (isIPv4) return tok;   // ưu tiên IPv4
+        if (isIPv6 && ipv6.length() == 0) ipv6 = tok;
+
+        pos = q2 + 1;
+    }
+
+    // Nếu không có dấu nháy, thử parse sau dấu phẩy đầu tiên
+    int idx = resp.indexOf("+CGPADDR:");
+    if (idx != -1) {
+        int comma = resp.indexOf(',', idx);
+        if (comma != -1) {
+            int eol = resp.indexOf("\r\n", comma);
+            String tail = (eol != -1) ? resp.substring(comma + 1, eol) : resp.substring(comma + 1);
+            tail.trim();
+            if (tail.length() > 0) return tail;
         }
     }
-    return "";
+
+    // Trả về IPv6 nếu không có IPv4
+    return ipv6;
 }
 
 // ============================================================================
@@ -263,20 +337,20 @@ bool AIoT_L501::deactivatePDP(int cid) {
 }
 
 // AT+NETOPEN - Mở kết nối mạng
-bool AIoT_L501::netOpen() {
-    String resp;
-    if (!sendAT("AT+NETOPEN", resp, 10000)) return false;
-    String resp2 = readAT(5000);
-    return (resp.indexOf("OK") != -1) || (resp2.indexOf("SUCCESS") != -1);
-}
+// bool AIoT_L501::netOpen() {
+//     String resp;
+//     if (!sendAT("AT+NETOPEN", resp, 10000)) return false;
+//     String resp2 = readAT(5000);
+//     return (resp.indexOf("OK") != -1) || (resp2.indexOf("SUCCESS") != -1);
+// }
 
-// AT+NETCLOSE - Đóng kết nối mạng
-bool AIoT_L501::netClose() {
-    String resp;
-    if (!sendAT("AT+NETCLOSE", resp, 5000)) return false;
-    String resp2 = readAT(5000);
-    return (resp.indexOf("OK") != -1) || (resp2.indexOf("SUCCESS") != -1);
-}
+// // AT+NETCLOSE - Đóng kết nối mạng
+// bool AIoT_L501::netClose() {
+//     String resp;
+//     if (!sendAT("AT+NETCLOSE", resp, 5000)) return false;
+//     String resp2 = readAT(5000);
+//     return (resp.indexOf("OK") != -1) || (resp2.indexOf("SUCCESS") != -1);
+// }
 
 bool AIoT_L501::connectInternet4G(const String &apn, const String &user, const String &pass, int cid) {
     String resp;
@@ -342,12 +416,30 @@ String AIoT_L501::readSMS(int index) {
 }
 
 String AIoT_L501::listAllSMS() {
-    String resp;
-    sendAT("AT+CMGF=1", resp, 2000);
-    sendAT("AT+CPMS=\"SM\",\"SM\",\"SM\"", resp, 3000);
-    if (sendAT("AT+CMGL=\"ALL\"", resp, 10000)) {
-        return resp;
+    String resp, tmp;
+
+    // Bật text mode
+    sendAT("AT+CMGF=1", tmp, 2000);
+
+    // Thử lần lượt 2 bộ nhớ: SIM (SM) rồi bộ nhớ máy (ME)
+    const char* stores[] = {"SM", "ME"};
+    for (int i = 0; i < 2; ++i) {
+        String cpms = String("AT+CPMS=\"") + stores[i] + "\",\"" + stores[i] + "\",\"" + stores[i] + "\"";
+        sendAT(cpms.c_str(), tmp, 3000);
+
+        // Gửi CMGL="ALL" và đọc dài hơn vì dữ liệu nhiều
+        clearBuffer();
+        HardwareSerial &s = serial_;
+        s.println("AT+CMGL=\"ALL\"");
+
+        resp = readAT(10000); // tăng timeout để nhận trọn gói
+        // Nếu tìm thấy ít nhất một tin
+        if (resp.indexOf("+CMGL:") != -1) {
+            return resp;
+        }
     }
+
+    // Không có tin hoặc không đọc được
     return "";
 }
 
@@ -515,6 +607,15 @@ bool AIoT_L501::mqttStop() {
 // AT+CIPOPEN=socketId,"TCP","host",port
 bool AIoT_L501::tcpConnect(int socketId, const String &host, int port) {
     String resp;
+    // Mở mạng nếu cần
+    if (!isDataConnected()) {
+        if (!netOpen()) {
+            // Thử kích hoạt PDP rồi mở mạng
+            activatePDP(1);
+            if (!netOpen()) return false;
+        }
+    }
+
     String cmd = "AT+CIPOPEN=" + String(socketId) + ",\"TCP\",\"" + host + "\"," + String(port);
     if (!sendAT(cmd.c_str(), resp, 15000)) return false;
     String resp2 = readAT(10000);
@@ -663,10 +764,82 @@ bool AIoT_L501::tcpCloseAll() {
 // Kiểm tra trạng thái socket
 bool AIoT_L501::isTcpConnected(int socketId) {
     String resp;
-    if (sendAT("AT+CIPCLOSE?", resp, 5000)) {
-        // Tìm socketId trong danh sách kết nối
-        String pattern = String(socketId) + ",\"TCP\"";
-        return resp.indexOf(pattern) != -1;
+    // Theo log của bạn: +CIPCLOSE:<id>,<state> (0=closed, 1=open)
+    if (!sendAT("AT+CIPCLOSE?", resp, 5000)) return false;
+
+    String pat = String("+CIPCLOSE:") + String(socketId) + ",";
+    int idx = resp.indexOf(pat);
+    if (idx == -1) return false;
+
+    int comma = resp.indexOf(',', idx);
+    if (comma == -1) return false;
+
+    int eol = resp.indexOf("\r\n", comma + 1);
+    String state = (eol != -1) ? resp.substring(comma + 1, eol) : resp.substring(comma + 1);
+    state.trim();
+
+    return state == "1";
+}
+
+bool AIoT_L501::netIsOpen() {
+    String resp;
+    if (!sendAT("AT+NETOPEN?", resp, 2000)) return false;
+    int idx = resp.indexOf("+NETOPEN:");
+    if (idx != -1) {
+        int eol = resp.indexOf("\r\n", idx);
+        String line = (eol != -1) ? resp.substring(idx, eol) : resp.substring(idx);
+        int colon = line.indexOf(':');
+        String val = (colon != -1) ? line.substring(colon + 1) : "";
+        val.trim();
+        return val == "1";
+    }
+    return resp.indexOf("ALREADY") != -1;
+}
+
+bool AIoT_L501::netOpen() {
+    if (netIsOpen()) return true;
+
+    clearBuffer();
+    serial_.println("AT+NETOPEN");
+    String resp = readAT(20000);
+
+    if (resp.indexOf("SUCCESS") != -1) return true;
+    if (resp.indexOf("+NETOPEN: 0") != -1) return true;
+    if (resp.indexOf("ALREADY") != -1) return true;
+    if (resp.indexOf("OK") != -1 && netIsOpen()) return true;
+
+    String tmp;
+    sendAT("AT+NETCLOSE", tmp, 3000);
+
+    clearBuffer();
+    serial_.println("AT+NETOPEN");
+    resp = readAT(20000);
+    if (resp.indexOf("SUCCESS") != -1) return true;
+    if (resp.indexOf("+NETOPEN: 0") != -1) return true;
+    return netIsOpen();
+}
+
+bool AIoT_L501::netClose() {
+    clearBuffer();
+    serial_.println("AT+NETCLOSE");
+    String resp = readAT(10000);
+
+    if (resp.indexOf("SUCCESS") != -1) return true;
+    if (resp.indexOf("+NETCLOSE: 0") != -1) return true;
+    if (resp.indexOf("OK") != -1) return true;
+
+    String tmp;
+    if (sendAT("AT+NETOPEN?", tmp, 2000)) {
+        int idx = tmp.indexOf("+NETOPEN:");
+        if (idx != -1) {
+            int eol = tmp.indexOf("\r\n", idx);
+            String line = (eol != -1) ? tmp.substring(idx, eol) : tmp.substring(idx);
+            int colon = line.indexOf(':');
+            String val = (colon != -1) ? line.substring(colon + 1) : "";
+            val.trim();
+            if (val == "0") return true;
+        }
     }
     return false;
 }
+
