@@ -42,6 +42,14 @@ public:
      */
     String readAT(uint32_t timeout = 2000);
 
+    /**
+     * @brief Gửi lệnh AT không cần chờ phản hồi
+     * @param cmd Lệnh AT cần gửi (VD: "AT+CSQ")
+     */
+    void sendATcmd(const char *cmd);
+    bool waitFor(const String &target, uint32_t timeout);
+
+
     // ========================================================================
     // Module & SIM Status (Trạng thái Module & SIM)
     // ========================================================================
@@ -219,6 +227,7 @@ public:
      * @return true nếu thành công, false nếu thất bại
      */
     bool mqttConfig(const String &clientId, const String &username = "", const String &password = "");
+    //bool mqttConfig(const String &clientId, const String &username, const String &password, String &resp);  // Thêm dòng này
 
     /**
      * @brief Thiết lập server MQTT và kết nối TCP (AT+MIPSTART)
@@ -235,7 +244,7 @@ public:
      * @param keepalive Thời gian keep-alive (giây), mặc định 60
      * @return true nếu kết nối thành công, false nếu thất bại
      */
-    bool mqttConnect(int cleanSession = 1, int keepalive = 60);
+    bool mqttConnect(int cleanSession= 1 , int keepalive = 60);
 
     /**
      * @brief Gửi tin nhắn MQTT ngắn (AT+MPUB)
@@ -312,21 +321,21 @@ public:
      * @param data Chuỗi dữ liệu MQTT (từ mqttReceive)
      * @return Tên topic, rỗng nếu không tìm thấy
      */
-    String mqttGetTopic(const String &data);
+    // String mqttGetTopic(const String &data);
 
-    /**
-     * @brief Tách lấy payload từ dữ liệu MQTT
-     * @param data Chuỗi dữ liệu MQTT (từ mqttReceive)
-     * @return Nội dung payload, rỗng nếu không tìm thấy
-     */
-    String mqttGetPayload(const String &data);
+    // /**
+    //  * @brief Tách lấy payload từ dữ liệu MQTT
+    //  * @param data Chuỗi dữ liệu MQTT (từ mqttReceive)
+    //  * @return Nội dung payload, rỗng nếu không tìm thấy
+    //  */
+    // String mqttGetPayload(const String &data);
 
-    /**
-     * @brief Tách lấy độ dài payload từ dữ liệu MQTT
-     * @param data Chuỗi dữ liệu MQTT (từ mqttReceive)
-     * @return Độ dài payload (bytes), 0 nếu không tìm thấy
-     */
-    int mqttGetLength(const String &data);
+    // /**
+    //  * @brief Tách lấy độ dài payload từ dữ liệu MQTT
+    //  * @param data Chuỗi dữ liệu MQTT (từ mqttReceive)
+    //  * @return Độ dài payload (bytes), 0 nếu không tìm thấy
+    //  */
+    // int mqttGetLength(const String &data);
 
     // ========================================================================
     // TCP/UDP Functions (Kết nối TCP/UDP)
@@ -340,14 +349,6 @@ public:
      * @return true nếu kết nối thành công, false nếu thất bại
      */
     bool tcpConnect(int socketId, const String &host, int port);
-
-    /**
-     * @brief Mở kết nối UDP
-     * @param socketId ID socket (1-10)
-     * @return true nếu mở thành công, false nếu thất bại
-     */
-    bool udpOpen(int socketId);
-
     /**
      * @brief Gửi dữ liệu qua TCP
      * @param socketId ID socket
@@ -363,18 +364,8 @@ public:
      * @param length Độ dài dữ liệu
      * @return true nếu gửi thành công, false nếu thất bại
      */
+    
     bool tcpSendLen(int socketId, const String &data, int length);
-
-    /**
-     * @brief Gửi dữ liệu qua UDP đến địa chỉ cụ thể
-     * @param socketId ID socket
-     * @param data Dữ liệu cần gửi
-     * @param host Địa chỉ server đích
-     * @param port Cổng đích
-     * @return true nếu gửi thành công, false nếu thất bại
-     */
-    bool udpSend(int socketId, const String &data, const String &host, int port);
-
     /**
      * @brief Nhận dữ liệu từ socket
      * @param socketId ID socket
@@ -382,6 +373,12 @@ public:
      * @return Dữ liệu nhận được, rỗng nếu không có
      */
     String tcpReceive(int socketId, int length = 0);
+    /**
+     * @brief Kiểm tra số byte còn lại trong buffer TCP của socket
+     * @param socketId ID socket
+     * @return Số byte còn lại trong buffer, 0 nếu không có
+     */
+    int tcpAvailable(int socketId);
 
     /**
      * @brief Đóng kết nối socket
@@ -402,6 +399,23 @@ public:
      * @return true nếu đang kết nối, false nếu không
      */
     bool isTcpConnected(int socketId);
+    /**
+     * @brief Mở kết nối UDP
+     * @param socketId ID socket (1-10)
+     * @return true nếu mở thành công, false nếu thất bại
+     */
+    
+    bool udpOpen(int socketId);
+
+    /**
+     * @brief Gửi dữ liệu qua UDP đến địa chỉ cụ thể
+     * @param socketId ID socket
+     * @param data Dữ liệu cần gửi
+     * @param host Địa chỉ server đích
+     * @param port Cổng đích
+     * @return true nếu gửi thành công, false nếu thất bại
+     */
+    bool udpSend(int socketId, const String &data, const String &host, int port);
 
     /**
      * @brief Đổi baudrate cho cả module SIM (AT+IPR) và UART ESP32

@@ -112,6 +112,10 @@ void AIoT_L501::clearBuffer() {
     }
 }
 
+void AIoT_L501::sendATcmd(const char *cmd) {
+    serial_.println(cmd);
+}
+
 bool AIoT_L501::sendAT(const char *cmd, String &response, uint32_t timeout) {
     // Xóa buffer trước khi gửi
     //clearBuffer();
@@ -471,12 +475,18 @@ bool AIoT_L501::deleteAllSMS() {
 bool AIoT_L501::call(const String &phone) {
     String resp;
     String cmd = "ATD" + phone + ";";
-    return sendAT(cmd.c_str(), resp, 5000);
+    sendAT(cmd.c_str(), resp, 5000);
+    Serial.print("[DEBUG][callPhone] resp: ");
+    Serial.println(resp);
+    return resp.indexOf("OK") != -1;
 }
 
 bool AIoT_L501::hangUp() {
     String resp;
-    return sendAT("ATH", resp, 2000);
+    sendAT("ATH", resp, 2000);
+    Serial.print("[DEBUG][hangUp] resp: ");
+    Serial.println(resp);
+    return resp.indexOf("OK") != -1;
 }
 
 bool AIoT_L501::answerCall() {
@@ -488,32 +498,59 @@ bool AIoT_L501::answerCall() {
 // MQTT
 // ============================================================================
 
-bool AIoT_L501::mqttConfig(const String &clientId, const String &username, const String &password) {
-    String resp;
+bool AIoT_L501::mqttConfig(const String &clientId, const String &user, const String &pass) {
+    clearBuffer();
     String cmd = "AT+MCONFIG=\"" + clientId + "\"";
-    if (username.length() > 0) {
-        cmd += ",\"" + username + "\"";
-        if (password.length() > 0) {
-            cmd += ",\"" + password + "\"";
-        }
+    if (user.length() > 0) {
+        cmd += ",\"" + user + "\",\"" + pass + "\"";
     }
-    return sendAT(cmd.c_str(), resp, 5000);
+    serial_.println(cmd);
+    String resp = readAT(10000);
+    return (resp.indexOf("OK") != -1);
 }
 
 bool AIoT_L501::mqttSetServer(const String &address, int port, int version) {
-    String resp;
+    clearBuffer();
+    // Lệnh đúng: AT+MIPSTART="host",port,version
     String cmd = "AT+MIPSTART=\"" + address + "\"," + String(port) + "," + String(version);
-    if (!sendAT(cmd.c_str(), resp, 15000)) return false;
-    String resp2 = readAT(10000);
-    return (resp.indexOf("SUCCESS") != -1) || (resp2.indexOf("SUCCESS") != -1);
+    serial_.println(cmd);
+
+    String resp = readAT(15000); 
+    // Theo ví dụ, MIPSTART trả về OK là thành công tạo TCP
+    return (resp.indexOf("OK") != -1);
 }
 
 bool AIoT_L501::mqttConnect(int cleanSession, int keepalive) {
-    String resp;
+    //clearBuffer(); // Xóa rác trong buffer UART trước khi gửi
+    
     String cmd = "AT+MCONNECT=" + String(cleanSession) + "," + String(keepalive);
-    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
-    String resp2 = readAT(10000);
-    return (resp.indexOf("SUCCESS") != -1) || (resp2.indexOf("SUCCESS") != -1);
+    serial_.println(cmd);
+
+    // Đọc toàn bộ phản hồi trong vòng tối đa 15 giây
+    // Chúng ta đợi cho đến khi thấy chữ "SUCCESS" hoặc "FAILURE"
+    unsigned long start = millis();
+    String fullResp = "";
+    
+    while (millis() - start < 15000) {
+        if (serial_.available()) {
+            fullResp += serial_.readString();
+            
+            // Nếu thấy SUCCESS thì thoát ngay, không cần đợi hết timeout
+            if (fullResp.indexOf("+MCONNECT: SUCCESS") != -1) {
+                Serial.println("[DEBUG] MQTT Connect Success!");
+                return true;
+            }
+            
+            // Nếu thấy FAILURE thì thoát và báo lỗi ngay
+            if (fullResp.indexOf("+MCONNECT: FAILURE") != -1) {
+                Serial.println("[DEBUG] MQTT Connect Failed!");
+                return false;
+            }
+        }
+    }
+
+    Serial.println("[DEBUG] MQTT Connect Timeout!");
+    return false;
 }
 
 bool AIoT_L501::mqttPublish(const String &topic, const String &payload, int qos, int retain) {
@@ -536,8 +573,9 @@ bool AIoT_L501::mqttUnsubscribe(const String &topic) {
     String resp;
     String cmd = "AT+MUNSUB=\"" + topic + "\"";
     if (!sendAT(cmd.c_str(), resp, 5000)) return false;
-    String resp2 = readAT(5000);
-    return (resp.indexOf("SUCCESS") != -1) || (resp2.indexOf("SUCCESS") != -1);
+    // String resp2 = readAT(5000);
+    // return (resp.indexOf("SUCCESS") != -1) || (resp2.indexOf("SUCCESS") != -1);
+    return true;
 }
 
 bool AIoT_L501::mqttDisconnect() {
@@ -557,6 +595,8 @@ bool AIoT_L501::mqttClose() {
 int AIoT_L501::mqttStatus() {
     String resp;
     if (sendAT("AT+MQTTSTATU", resp, 2000)) {
+        Serial.print("[mqttStatus] resp: ");
+        Serial.println(resp);  // Thêm debug
         int idx = resp.indexOf("+MQTTSTATU:");
         if (idx != -1) {
             int end = resp.indexOf("\r\n", idx);
@@ -621,125 +661,39 @@ bool AIoT_L501::tcpConnect(int socketId, const String &host, int port) {
     String resp2 = readAT(10000);
     return (resp.indexOf("SUCCESS") != -1) || (resp2.indexOf("SUCCESS") != -1);
 }
-
-// AT+CIPOPEN=socketId,"UDP",,
-bool AIoT_L501::udpOpen(int socketId) {
-    String resp;
-    String cmd = "AT+CIPOPEN=" + String(socketId) + ",\"UDP\",,";
-    if (!sendAT(cmd.c_str(), resp, 10000)) return false;
-    String resp2 = readAT(5000);
-    return (resp.indexOf("SUCCESS") != -1) || (resp2.indexOf("SUCCESS") != -1);
-}
-
-// AT+CIPSEND=socketId rồi gửi data
-bool AIoT_L501::tcpSend(int socketId, const String &data) {
-    String resp;
-    String cmd = "AT+CIPSEND=" + String(socketId);
-    
-    clearBuffer();
-    serial_.println(cmd);
-    
-    // Chờ dấu ">"
-    uint32_t start = millis();
-    while (millis() - start < 5000) {
-        if (serial_.available()) {
-            char c = serial_.read();
-            if (c == '>') break;
-        }
-    }
-    
-    // Gửi dữ liệu
-    serial_.print(data);
-    serial_.write(26);  // Ctrl+Z để kết thúc
-    
-    // Chờ phản hồi
-    resp = readAT(10000);
-    return resp.indexOf("SUCCESS") != -1 || resp.indexOf("OK") != -1;
-}
-
-// AT+CIPSEND=socketId,length rồi gửi data
-bool AIoT_L501::tcpSendLen(int socketId, const String &data, int length) {
-    String resp;
-    String cmd = "AT+CIPSEND=" + String(socketId) + "," + String(length);
-    
-    clearBuffer();
-    serial_.println(cmd);
-    
-    // Chờ dấu ">"
-    uint32_t start = millis();
-    while (millis() - start < 5000) {
-        if (serial_.available()) {
-            char c = serial_.read();
-            if (c == '>') break;
-        }
-    }
-    
-    // Gửi dữ liệu
-    serial_.print(data);
-    
-    // Chờ phản hồi
-    resp = readAT(10000);
-    return resp.indexOf("SUCCESS") != -1 || resp.indexOf("OK") != -1;
-}
-
-// AT+CIPSEND=socketId,length,"host",port rồi gửi data (UDP)
-bool AIoT_L501::udpSend(int socketId, const String &data, const String &host, int port) {
-    String resp;
-    int len = data.length();
-    String cmd = "AT+CIPSEND=" + String(socketId) + "," + String(len) + ",\"" + host + "\"," + String(port);
-    
-    clearBuffer();
-    serial_.println(cmd);
-    
-    // Chờ dấu ">"
-    uint32_t start = millis();
-    while (millis() - start < 5000) {
-        if (serial_.available()) {
-            char c = serial_.read();
-            if (c == '>') break;
-        }
-    }
-    
-    // Gửi dữ liệu
-    serial_.print(data);
-    
-    // Chờ phản hồi
-    resp = readAT(10000);
-    return resp.indexOf("SUCCESS") != -1 || resp.indexOf("OK") != -1;
-}
-
+ 
 // AT+CIPRXGET=2,socketId,length
 String AIoT_L501::tcpReceive(int socketId, int length) {
     String resp;
-    String cmd;
-    
-    if (length > 0) {
-        cmd = "AT+CIPRXGET=2," + String(socketId) + "," + String(length);
-    } else {
-        cmd = "AT+CIPRXGET=2," + String(socketId) + ",1024";  // Đọc tối đa 1024 bytes
-    }
-    
+    String cmd = "AT+CIPRXGET=2," + String(socketId) + "," + String(length);
+
     if (sendAT(cmd.c_str(), resp, 5000)) {
-        // Tách lấy dữ liệu từ response
-        // Format: +CIPRXGET: SUCCESS,2,socketId,len,remaining,data
-        int idx = resp.indexOf("SUCCESS");
+        // Tìm header +CIPRXGET:SUCCESS
+        int idx = resp.indexOf("+CIPRXGET:SUCCESS");
         if (idx != -1) {
-            // Tìm dấu phẩy cuối cùng trước data
-            int commaCount = 0;
-            int dataStart = idx;
-            while (commaCount < 4 && dataStart < resp.length()) {
-                if (resp.charAt(dataStart) == ',') commaCount++;
-                dataStart++;
-            }
-            if (commaCount >= 4) {
-                int dataEnd = resp.indexOf("\r\n", dataStart);
-                if (dataEnd == -1) dataEnd = resp.length();
-                return resp.substring(dataStart, dataEnd);
+            // Tìm xuống dòng đầu tiên sau header
+            int headerEnd = resp.indexOf("\r\n", idx);
+            if (headerEnd != -1) {
+                headerEnd += 2; // Bỏ qua \r\n
+                // Tìm xuống dòng tiếp theo (kết thúc data)
+                int dataEnd = resp.indexOf("\r\n", headerEnd);
+                if (dataEnd > headerEnd) {
+                    String data = resp.substring(headerEnd, dataEnd);
+                    data.trim();
+                    return data;
+                } else {
+                    // Nếu không có \r\n kết thúc, lấy hết phần còn lại
+                    String data = resp.substring(headerEnd);
+                    data.trim();
+                    return data;
+                }
             }
         }
     }
     return "";
 }
+
+
 
 // AT+CIPCLOSE=socketId
 bool AIoT_L501::tcpClose(int socketId) {
@@ -781,6 +735,108 @@ bool AIoT_L501::isTcpConnected(int socketId) {
     return state == "1";
 }
 
+// AT+CIPSEND=socketId rồi gửi data
+bool AIoT_L501::tcpSend(int socketId, const String &data) {
+    String cmd = "AT+CIPSEND=" + String(socketId) + "," + String(data.length());
+    serial_.println(cmd);
+
+    // Chờ dấu >
+    if (!waitFor(">", 5000)) return false;
+
+    serial_.print(data);
+    serial_.flush();
+
+    String resp = readAT(10000);
+    return resp.indexOf("CIPSEND:SUCCESS") != -1;
+}
+
+bool AIoT_L501::waitFor(const String &target, uint32_t timeout) {
+    String buffer = "";
+    uint32_t start = millis();
+
+    while (millis() - start < timeout) {
+        while (serial_.available()) {
+            char c = serial_.read();
+            buffer += c;
+
+            // Tránh buffer phình quá lớn
+            if (buffer.length() > 200) {
+                buffer.remove(0, buffer.length() - 100);
+            }
+
+            if (buffer.indexOf(target) != -1) {
+                return true;
+            }
+        }
+        delay(1); // nhường CPU cho ESP32
+    }
+    return false;
+}
+
+// AT+CIPSEND=socketId,length rồi gửi data
+// bool AIoT_L501::tcpSendLen(int socketId, const String &data, int length) {
+//     String resp;
+//     String cmd = "AT+CIPSEND=" + String(socketId) + "," + String(length);
+//     delay(1000);
+//     clearBuffer();
+//     serial_.println(cmd);
+    
+//     // Chờ dấu ">"
+//     uint32_t start = millis();
+//     while (millis() - start < 5000) {
+//         if (serial_.available()) {
+//             char c = serial_.read();
+//             if (c == '>') break;
+//         }
+//     }
+    
+//     // Gửi dữ liệu
+//     serial_.print(data + "\r\n");
+    
+//     // Chờ phản hồi
+//     resp = readAT(20000);
+//     return resp.indexOf("SUCCESS") != -1 || resp.indexOf("OK") != -1;
+// }
+//===============UDP
+// AT+CIPOPEN=socketId,"UDP",,
+bool AIoT_L501::udpOpen(int socketId) {
+    String resp;
+    String cmd = "AT+CIPOPEN=" + String(socketId) + ",\"UDP\",,";
+    if (!sendAT(cmd.c_str(), resp, 10000)) return false;
+    String resp2 = readAT(5000);
+    return (resp.indexOf("SUCCESS") != -1) || (resp2.indexOf("SUCCESS") != -1);
+}
+
+
+
+// AT+CIPSEND=socketId,length,"host",port rồi gửi data (UDP)
+bool AIoT_L501::udpSend(int socketId, const String &data, const String &host, int port) {
+    String resp;
+    int len = data.length();
+    String cmd = "AT+CIPSEND=" + String(socketId) + "," + String(len) + ",\"" + host + "\"," + String(port);
+    
+    clearBuffer();
+    serial_.println(cmd);
+    
+    // Chờ dấu ">"
+    uint32_t start = millis();
+    while (millis() - start < 5000) {
+        if (serial_.available()) {
+            char c = serial_.read();
+            if (c == '>') break;
+        }
+    }
+    
+    // Gửi dữ liệu
+    serial_.print(data);
+    
+    // Chờ phản hồi
+    resp = readAT(10000);
+    return resp.indexOf("SUCCESS") != -1 || resp.indexOf("OK") != -1;
+}
+
+
+
 bool AIoT_L501::netIsOpen() {
     String resp;
     if (!sendAT("AT+NETOPEN?", resp, 2000)) return false;
@@ -809,7 +865,7 @@ bool AIoT_L501::netOpen() {
     if (resp.indexOf("OK") != -1 && netIsOpen()) return true;
 
     String tmp;
-    sendAT("AT+NETCLOSE", tmp, 3000);
+    sendAT("AT+NETCLOSE", tmp, 5000);
 
     clearBuffer();
     serial_.println("AT+NETOPEN");
@@ -842,4 +898,23 @@ bool AIoT_L501::netClose() {
     }
     return false;
 }
+
+// int AIoT_L501::tcpAvailable(int socketId) {
+//     String resp;
+//     // Xóa hết rác cũ trong Serial buffer trước khi hỏi
+//     while(serial_.available()) serial_.read(); 
+
+//     if (sendAT(("AT+CIPRXGET=4," + String(socketId)).c_str(), resp, 2000)) {
+//         // Phản hồi: +CIPRXGET: SUCCESS,4,1,11 (11 là số byte đang đợi)
+//         int idx = resp.indexOf("+CIPRXGET: SUCCESS,4");
+//         if (idx != -1) {
+//             int lastComma = resp.lastIndexOf(',');
+//             if (lastComma != -1) {
+//                 return resp.substring(lastComma + 1).toInt();
+//             }
+//         }
+//     }
+//     return 0;
+// }
+
 
