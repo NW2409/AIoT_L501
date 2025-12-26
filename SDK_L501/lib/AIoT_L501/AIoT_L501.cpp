@@ -658,7 +658,7 @@ bool AIoT_L501::tcpConnect(int socketId, const String &host, int port) {
 
     String cmd = "AT+CIPOPEN=" + String(socketId) + ",\"TCP\",\"" + host + "\"," + String(port);
     if (!sendAT(cmd.c_str(), resp, 15000)) return false;
-    String resp2 = readAT(10000);
+    String resp2 = readAT(5000);
     return (resp.indexOf("SUCCESS") != -1) || (resp2.indexOf("SUCCESS") != -1);
 }
  
@@ -737,17 +737,35 @@ bool AIoT_L501::isTcpConnected(int socketId) {
 
 // AT+CIPSEND=socketId rồi gửi data
 bool AIoT_L501::tcpSend(int socketId, const String &data) {
+    // 1. Đặt chế độ nhận thủ công cho socket này
+    String resp;
+    String setManualCmd = "AT+CIPRXGET=1," + String(socketId);
+    sendAT(setManualCmd.c_str(), resp, 2000);
+
+    // 2. Gửi dữ liệu như cũ
     String cmd = "AT+CIPSEND=" + String(socketId) + "," + String(data.length());
     serial_.println(cmd);
-
+    
     // Chờ dấu >
-    if (!waitFor(">", 5000)) return false;
+    if (!waitFor(">", 3000)) return false;
 
     serial_.print(data);
     serial_.flush();
 
-    String resp = readAT(10000);
+    resp = readAT(10000);
     return resp.indexOf("CIPSEND:SUCCESS") != -1;
+}
+
+// Gửi dữ liệu nhỏ qua TCP, không chỉ định độ dài (dưới 512 byte)
+bool AIoT_L501::tcpSendSmall(int socketId, const String &data) {
+    // Chỉ gửi nếu data nhỏ hơn hoặc bằng 512 byte
+    if (data.length() > 512) return false;
+
+    String cmd = "AT+CIPSEND=" + String(socketId) + ",,,," + data;
+    serial_.println(cmd);
+
+    String resp = readAT(10000);
+    return resp.indexOf("CIPSEND:SUCCESS") != -1 || resp.indexOf("SUCCESS") != -1;
 }
 
 bool AIoT_L501::waitFor(const String &target, uint32_t timeout) {

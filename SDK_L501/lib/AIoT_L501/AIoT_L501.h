@@ -356,6 +356,13 @@ public:
      * @return true nếu gửi thành công, false nếu thất bại
      */
     bool tcpSend(int socketId, const String &data);
+    /**
+     * @brief Gửi dữ liệu nhỏ qua TCP (dưới 512 byte)
+     * @param socketId ID socket
+     * @param data Dữ liệu cần gửi
+     * @return true nếu gửi thành công, false nếu thất bại
+     */
+    bool tcpSendSmall(int socketId, const String &data);
 
     /**
      * @brief Gửi dữ liệu qua TCP với độ dài cố định
@@ -392,7 +399,7 @@ public:
      * @return true nếu đóng thành công, false nếu thất bại
      */
     bool tcpCloseAll();
-
+    String readRaw(uint32_t timeout = 2000);
     /**
      * @brief Kiểm tra trạng thái kết nối socket
      * @param socketId ID socket
