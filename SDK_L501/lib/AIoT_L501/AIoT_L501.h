@@ -359,15 +359,6 @@ public:
     bool tcpSendSmall(int socketId, const String &data);
 
     /**
-     * @brief Gửi dữ liệu qua TCP với độ dài cố định
-     * @param socketId ID socket
-     * @param data Dữ liệu cần gửi
-     * @param length Độ dài dữ liệu
-     * @return true nếu gửi thành công, false nếu thất bại
-     */
-    
-    bool tcpSendLen(int socketId, const String &data, int length);
-    /**
      * @brief Nhận dữ liệu từ socket
      * @param socketId ID socket
      * @param length Số byte muốn đọc (0 = đọc tất cả)
@@ -393,7 +384,6 @@ public:
      * @return true nếu đóng thành công, false nếu thất bại
      */
     bool tcpCloseAll();
-    String readRaw(uint32_t timeout = 2000);
     /**
      * @brief Kiểm tra trạng thái kết nối socket
      * @param socketId ID socket

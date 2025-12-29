@@ -785,31 +785,6 @@ bool AIoT_L501::waitFor(const String &target, uint32_t timeout) {
     return false;
 }
 
-// AT+CIPSEND=socketId,length rồi gửi data
-// bool AIoT_L501::tcpSendLen(int socketId, const String &data, int length) {
-//     String resp;
-//     String cmd = "AT+CIPSEND=" + String(socketId) + "," + String(length);
-//     delay(1000);
-//     clearBuffer();
-//     serial_.println(cmd);
-    
-//     // Chờ dấu ">"
-//     uint32_t start = millis();
-//     while (millis() - start < 5000) {
-//         if (serial_.available()) {
-//             char c = serial_.read();
-//             if (c == '>') break;
-//         }
-//     }
-    
-//     // Gửi dữ liệu
-//     serial_.print(data + "\r\n");
-    
-//     // Chờ phản hồi
-//     resp = readAT(20000);
-//     return resp.indexOf("SUCCESS") != -1 || resp.indexOf("OK") != -1;
-// }
-//===============UDP
 
 bool AIoT_L501::netIsOpen() {
     String resp;
