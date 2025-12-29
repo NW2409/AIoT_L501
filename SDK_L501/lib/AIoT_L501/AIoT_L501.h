@@ -91,6 +91,12 @@ public:
      */
     String getIPAddress();
 
+    /**
+     * @brief Lấy thời gian thực từ module (nếu đã đồng bộ mạng)
+     * @return Chuỗi thời gian dạng "yy/MM/dd,hh:mm:ss±zz" hoặc rỗng nếu lỗi
+     */
+    String getNetworkTime();
+
     // ========================================================================
     // Network Connection (Kết nối mạng 4G)
     // ========================================================================
@@ -102,29 +108,6 @@ public:
      * @return true nếu kết nối thành công, false nếu thất bại
      */
     bool ensureNetwork(uint8_t retry = 3, uint32_t interval = 5000);
-
-    /**
-     * @brief Gắn kết GPRS với APN
-     * @param apn Tên APN (VD: "v-internet", "m-wap")
-     * @param user Tên người dùng, mặc định rỗng
-     * @param pass Mật khẩu, mặc định rỗng
-     * @return true nếu thành công, false nếu thất bại
-     */
-    bool attachGPRS(const String &apn, const String &user = "", const String &pass = "");
-
-    /**
-     * @brief Kích hoạt PDP context
-     * @param cid Context ID, mặc định 1
-     * @return true nếu thành công, false nếu thất bại
-     */
-    bool activatePDP(int cid = 1);
-
-    /**
-     * @brief Hủy kích hoạt PDP context
-     * @param cid Context ID, mặc định 1
-     * @return true nếu thành công, false nếu thất bại
-     */
-    bool deactivatePDP(int cid = 1);
 
     /**
      * @brief Mở kết nối mạng (AT+NETOPEN)
@@ -153,6 +136,17 @@ public:
      * @return true nếu kết nối thành công, false nếu thất bại
      */
     bool connectInternet4G(const String &apn, const String &user = "", const String &pass = "", int cid = 1);
+    /**
+     * @brief Kết nối Internet 4G cho module Quectel (QICSGP + NETOPEN)
+     * @param apn Tên APN
+     * @param user Tên người dùng, mặc định rỗng
+     * @param pass Mật khẩu, mặc định rỗng
+     * @param cid Context ID, mặc định 1
+     * @param contextType Loại kết nối (1: IPV4, 2: IPV4V6, 3: IPV6), mặc định 1
+     * @param auth Loại xác thực (0: none, 1: PAP, 2: CHAP), mặc định 1
+     * @return true nếu kết nối thành công, false nếu thất bại
+     */
+    bool connectInternet4G_L501(const String &apn, const String &user = "", const String &pass = "", int cid = 1, int contextType = 1, int auth = 1);
 
     // ========================================================================
     // SMS Functions (Nhắn tin SMS)
@@ -406,23 +400,26 @@ public:
      * @return true nếu đang kết nối, false nếu không
      */
     bool isTcpConnected(int socketId);
-    /**
-     * @brief Mở kết nối UDP
-     * @param socketId ID socket (1-10)
-     * @return true nếu mở thành công, false nếu thất bại
+     /**
+     * @brief Ping một địa chỉ host qua mạng 4G
+     * @param host Địa chỉ host (domain hoặc IP)
+     * @param count Số lần ping (1-100)
+     * @param size Kích thước gói dữ liệu (32-256)
+     * @param wait Thời gian chờ mỗi ping (1-255)
+     * @return Chuỗi kết quả ping trả về từ module
      */
-    
-    bool udpOpen(int socketId);
+    String ping(const String &host, int count = 4, int size = 32, int wait = 3);
 
     /**
-     * @brief Gửi dữ liệu qua UDP đến địa chỉ cụ thể
-     * @param socketId ID socket
-     * @param data Dữ liệu cần gửi
-     * @param host Địa chỉ server đích
-     * @param port Cổng đích
-     * @return true nếu gửi thành công, false nếu thất bại
+     * @brief Đặt thời gian thực cho module (theo chuẩn AT+CCLK)
+     * @param time Chuỗi thời gian dạng "yy/MM/dd,hh:mm:ss+zz"
+     * @return true nếu thành công, false nếu lỗi
      */
-    bool udpSend(int socketId, const String &data, const String &host, int port);
+    bool setNetworkTime(const String &time);
+        /**
+     * @brief Đóng tất cả PDP context và socket khi khởi động để tránh lỗi kết nối
+     */
+    void cleanStart();
 /**
      * @brief Open HTTP service on module (AT$HTTPOPEN)
      * @return true if module replies OK

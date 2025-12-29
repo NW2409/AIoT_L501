@@ -9,22 +9,23 @@ AIoT_L501::AIoT_L501(HardwareSerial &serial, uint32_t baud)
 
 void AIoT_L501::begin() {
     serial_.begin(baud_);
+    //cleanStart();
 }
 
 bool AIoT_L501::init(unsigned long timeout) {
     // In logo AIoT
     Serial.println();
-    Serial.println("                ___    ____    _________");
-    Serial.println("               /   |  /  _/___/___  ___/");
-    Serial.println("              / /| |  / / / __ \\/ /    ");
-    Serial.println("             / ___ |_/ / / /_/ / /    ");
-    Serial.println("            /_/  |_/___/ \\____/_/     ");
+    Serial.println("         ___    ____    _________");
+    Serial.println("        /   |  /  _/___/___  ___/");
+    Serial.println("       / /| |  / / / __ \\/ /    ");
+    Serial.println("      / ___ |_/ / / /_/ / /      ");
+    Serial.println("     /_/  |_/___/ \\____/_/      ");
     Serial.println();
-    Serial.println("╔═══════════════════════════════════════════════════════╗");
-    Serial.println("║           AIoT L501 SDK - ESP32 + 4G Module           ║");
-    Serial.println("║                   Version: 1.0                        ║");
-    Serial.println("║                   Author: AIoT                        ║");
-    Serial.println("╚═══════════════════════════════════════════════════════╝");
+    Serial.println("╔═══════════════════════════════════════╗");
+    Serial.println("║    AIoT L501 SDK - ESP32 + 4G Module  ║");
+    Serial.println("║            Version: 1.0               ║");
+    Serial.println("║            Author: AIoT               ║");
+    Serial.println("╚═══════════════════════════════════════╝");
     Serial.println();
 
     // Khởi tạo Serial cho module
@@ -53,25 +54,6 @@ bool AIoT_L501::init(unsigned long timeout) {
     // Tắt echo
     sendAT("ATE0", resp, 1000);
 
-    // ========== Kiểm tra AT+CSQ (Chất lượng tín hiệu) ==========
-    Serial.print("[AIoT] AT+CSQ -> ");
-    if (sendAT("AT+CSQ", resp, 2000)) {
-        int idx = resp.indexOf("+CSQ:");
-        if (idx != -1) {
-            int end = resp.indexOf("\r\n", idx);
-            if (end != -1) {
-                String csq = resp.substring(idx, end);
-                Serial.println(csq);
-            } else {
-                Serial.println("OK");
-            }
-        } else {
-            Serial.println("OK");
-        }
-    } else {
-        Serial.println("FAILED");
-    }
-
     // ========== Kiểm tra AT+CPIN? (Khe cắm SIM) ==========
     Serial.print("[AIoT] AT+CPIN? -> ");
     if (sendAT("AT+CPIN?", resp, 3000)) {
@@ -92,10 +74,30 @@ bool AIoT_L501::init(unsigned long timeout) {
         return false;
     }
 
+    // ========== Kiểm tra AT+CSQ (Chất lượng tín hiệu) ==========
+    Serial.print("[AIoT] AT+CSQ -> ");
+    if (sendAT("AT+CSQ", resp, 2000)) {
+        int idx = resp.indexOf("+CSQ:");
+        if (idx != -1) {
+            int end = resp.indexOf("\r\n", idx);
+            if (end != -1) {
+                String csq = resp.substring(idx, end);
+                Serial.println(csq);
+            } else {
+                Serial.println("OK");
+            }
+        } else {
+            Serial.println("OK");
+        }
+    } else {
+        Serial.println("FAILED");
+    } 
+
+
     Serial.println();
-    Serial.println("╔═══════════════════════════════════════════════════════╗");
-    Serial.println("║            ✓ KHỞI TẠO MODULE THÀNH CÔNG!              ║");
-    Serial.println("╚═══════════════════════════════════════════════════════╝");
+    Serial.println("╔════════════════════════════════════╗");
+    Serial.println("║  ✓ KHỞI TẠO MODULE THÀNH CÔNG!     ║");
+    Serial.println("╚════════════════════════════════════╝");
     Serial.println();
 
     return true;
@@ -320,26 +322,6 @@ bool AIoT_L501::ensureNetwork(uint8_t retry, uint32_t interval) {
     return false;
 }
 
-bool AIoT_L501::attachGPRS(const String &apn, const String &user, const String &pass) {
-    String resp;
-    if (!sendAT("AT+CGATT=1", resp, 5000)) return false;
-    String cmd = "AT+CGDCONT=1,\"IP\",\"" + apn + "\"";
-    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
-    return true;
-}
-
-bool AIoT_L501::activatePDP(int cid) {
-    String resp;
-    String cmd = "AT+CGACT=1," + String(cid);
-    return sendAT(cmd.c_str(), resp, 5000);
-}
-
-bool AIoT_L501::deactivatePDP(int cid) {
-    String resp;
-    String cmd = "AT+CGACT=0," + String(cid);
-    return sendAT(cmd.c_str(), resp, 5000);
-}
-
 // AT+NETOPEN - Mở kết nối mạng
 // bool AIoT_L501::netOpen() {
 //     String resp;
@@ -367,6 +349,18 @@ bool AIoT_L501::connectInternet4G(const String &apn, const String &user, const S
     // Mở kết nối mạng
     if (!netOpen()) return false;
     
+    return true;
+}
+
+bool AIoT_L501::connectInternet4G_L501(const String &apn, const String &user, const String &pass, int cid, int contextType, int auth) {
+    String resp;
+    // 1. Cấu hình APN, user, pass, context type, authentication
+    String cmd = "AT+QICSGP=" + String(cid) + "," + String(contextType) + ",\"" + apn + "\",\"" + user + "\",\"" + pass + "\"," + String(auth);
+    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
+
+    // 2. Mở kết nối mạng (module sẽ tự attach và kích hoạt PDP)
+    if (!netOpen()) return false;
+
     return true;
 }
 
@@ -651,7 +645,7 @@ bool AIoT_L501::tcpConnect(int socketId, const String &host, int port) {
     if (!isDataConnected()) {
         if (!netOpen()) {
             // Thử kích hoạt PDP rồi mở mạng
-            activatePDP(1);
+            //activatePDP(1);
             if (!netOpen()) return false;
         }
     }
@@ -742,7 +736,7 @@ bool AIoT_L501::tcpSend(int socketId, const String &data) {
     String setManualCmd = "AT+CIPRXGET=1," + String(socketId);
     sendAT(setManualCmd.c_str(), resp, 2000);
 
-    // 2. Gửi dữ liệu như cũ
+    // 2. Gửi dữ liệu
     String cmd = "AT+CIPSEND=" + String(socketId) + "," + String(data.length());
     serial_.println(cmd);
     
@@ -816,44 +810,6 @@ bool AIoT_L501::waitFor(const String &target, uint32_t timeout) {
 //     return resp.indexOf("SUCCESS") != -1 || resp.indexOf("OK") != -1;
 // }
 //===============UDP
-// AT+CIPOPEN=socketId,"UDP",,
-bool AIoT_L501::udpOpen(int socketId) {
-    String resp;
-    String cmd = "AT+CIPOPEN=" + String(socketId) + ",\"UDP\",,";
-    if (!sendAT(cmd.c_str(), resp, 10000)) return false;
-    String resp2 = readAT(5000);
-    return (resp.indexOf("SUCCESS") != -1) || (resp2.indexOf("SUCCESS") != -1);
-}
-
-
-
-// AT+CIPSEND=socketId,length,"host",port rồi gửi data (UDP)
-bool AIoT_L501::udpSend(int socketId, const String &data, const String &host, int port) {
-    String resp;
-    int len = data.length();
-    String cmd = "AT+CIPSEND=" + String(socketId) + "," + String(len) + ",\"" + host + "\"," + String(port);
-    
-    clearBuffer();
-    serial_.println(cmd);
-    
-    // Chờ dấu ">"
-    uint32_t start = millis();
-    while (millis() - start < 5000) {
-        if (serial_.available()) {
-            char c = serial_.read();
-            if (c == '>') break;
-        }
-    }
-    
-    // Gửi dữ liệu
-    serial_.print(data);
-    
-    // Chờ phản hồi
-    resp = readAT(10000);
-    return resp.indexOf("SUCCESS") != -1 || resp.indexOf("OK") != -1;
-}
-
-
 
 bool AIoT_L501::netIsOpen() {
     String resp;
@@ -917,23 +873,73 @@ bool AIoT_L501::netClose() {
     return false;
 }
 
-// int AIoT_L501::tcpAvailable(int socketId) {
-//     String resp;
-//     // Xóa hết rác cũ trong Serial buffer trước khi hỏi
-//     while(serial_.available()) serial_.read(); 
+String AIoT_L501::ping(const String &host, int count, int size, int wait) {
+    String resp, result;
+    if (!netOpen()) {
+        return "NETOPEN FAIL";
+    }
+    String cmd = "AT+MPING=\"" + host + "\",1," + String(count) + "," + String(size) + "," + String(wait);
+    if (!sendAT(cmd.c_str(), resp, 5000)) {
+        return "PING CMD FAIL";
+    }
+    result += resp;
 
-//     if (sendAT(("AT+CIPRXGET=4," + String(socketId)).c_str(), resp, 2000)) {
-//         // Phản hồi: +CIPRXGET: SUCCESS,4,1,11 (11 là số byte đang đợi)
-//         int idx = resp.indexOf("+CIPRXGET: SUCCESS,4");
-//         if (idx != -1) {
-//             int lastComma = resp.lastIndexOf(',');
-//             if (lastComma != -1) {
-//                 return resp.substring(lastComma + 1).toInt();
-//             }
-//         }
-//     }
-//     return 0;
-// }
+    // Đọc các dòng kết quả +MPING:
+    unsigned long start = millis();
+    while (millis() - start < 8000) {
+        if (serial_.available()) {
+            String line = serial_.readStringUntil('\n');
+            line.trim();
+            if (line.length() == 0) continue;
+            if (line.indexOf("Enter Sleep") != -1) continue; // Bỏ qua dòng này
+            result += line + "\n";
+            if (line.indexOf("+MPING:3") != -1) break;
+        }
+    }
+
+    sendAT("AT+MPINGSTOP", resp, 5000);
+    result += resp;
+    return result;
+}
+
+String AIoT_L501::getNetworkTime() {
+    String resp;
+    if (sendAT("AT+CCLK?", resp, 5000)) {
+        int idx = resp.indexOf("+CCLK:");
+        if (idx != -1) {
+            int quote1 = resp.indexOf('\"', idx);
+            int quote2 = resp.indexOf('\"', quote1 + 1);
+            if (quote1 != -1 && quote2 != -1) {
+                return resp.substring(quote1 + 1, quote2);
+            }
+        }
+    }
+    return "";
+}
+
+bool AIoT_L501::setNetworkTime(const String &time) {
+    String resp;
+    String cmd = "AT+CCLK=\"" + time + "\"";
+    return sendAT(cmd.c_str(), resp, 2000) && resp.indexOf("OK") != -1;
+}
+
+void AIoT_L501::cleanStart() {
+    String resp;
+    // Đóng tất cả socket TCP (1-10)
+    for (int sock = 1; sock <= 5; sock++) {
+        String cmd = "AT+CIPCLOSE=" + String(sock);
+        sendAT(cmd.c_str(), resp, 1000); // Bỏ qua lỗi nếu socket chưa mở
+        delay(100);
+    }
+    // Đóng tất cả PDP context (CID 1-8)
+    // for (int cid = 1; cid <= 10; cid++) {
+    //     String cmd = "AT+CGACT=0," + String(cid);
+    //     sendAT(cmd.c_str(), resp, 1000); // Bỏ qua lỗi nếu context chưa active
+    //     delay(100);
+    // }
+    delay(500); // Đợi module ổn định
+}
+
 // ============================================================================
 //                                    HTTP
 // ============================================================================
