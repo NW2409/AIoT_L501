@@ -315,24 +315,9 @@ public:
      * @param data Chuỗi dữ liệu MQTT (từ mqttReceive)
      * @return Tên topic, rỗng nếu không tìm thấy
      */
-    // String mqttGetTopic(const String &data);
-
-    // /**
-    //  * @brief Tách lấy payload từ dữ liệu MQTT
-    //  * @param data Chuỗi dữ liệu MQTT (từ mqttReceive)
-    //  * @return Nội dung payload, rỗng nếu không tìm thấy
-    //  */
-    // String mqttGetPayload(const String &data);
-
-    // /**
-    //  * @brief Tách lấy độ dài payload từ dữ liệu MQTT
-    //  * @param data Chuỗi dữ liệu MQTT (từ mqttReceive)
-    //  * @return Độ dài payload (bytes), 0 nếu không tìm thấy
-    //  */
-    // int mqttGetLength(const String &data);
 
     // ========================================================================
-    // TCP/UDP Functions (Kết nối TCP/UDP)
+    // TCP (Kết nối TCP)
     // ========================================================================
 
     /**

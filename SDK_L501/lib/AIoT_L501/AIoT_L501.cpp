@@ -785,7 +785,6 @@ bool AIoT_L501::waitFor(const String &target, uint32_t timeout) {
     return false;
 }
 
-
 bool AIoT_L501::netIsOpen() {
     String resp;
     if (!sendAT("AT+NETOPEN?", resp, 2000)) return false;
