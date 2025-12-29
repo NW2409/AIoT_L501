@@ -423,7 +423,74 @@ public:
      * @return true nếu gửi thành công, false nếu thất bại
      */
     bool udpSend(int socketId, const String &data, const String &host, int port);
+/**
+     * @brief Open HTTP service on module (AT$HTTPOPEN)
+     * @return true if module replies OK
+     */
+    bool httpOpen();
 
+    /**
+     * @brief Close HTTP service on module (AT$HTTPCLOSE)
+     * @return true if module replies OK
+     */
+    bool httpClose();
+
+    /**
+     * @brief Set HTTP parameters (AT$HTTPPARA)
+     * @param url Full URL string including scheme and path (e.g. "http://host/path")
+     * @param port TCP port (0 means use default from URL)
+     * @param ssl 0 = no SSL, 1 = SSL
+     * @return true if command accepted
+     */
+    bool httpSetPara(const String &url, int port = 0, int ssl = 0);
+
+    /**
+     * @brief Set a single HTTP request header (AT$HTTPRQH)
+     * @param name Header name (e.g. "Content-Type")
+     * @param value Header value (e.g. "application/json")
+     * @return true if command accepted
+     */
+    bool httpSetHeader(const String &name, const String &value);
+
+    /**
+     * @brief Notify module that application will send POST data (AT$HTTPDATA)
+     * @param length Number of bytes to send
+     * @param timeout Time in ms the module will wait for the data
+     * @return true if module ready to receive data (prompt or OK)
+     */
+    bool httpDataBegin(size_t length, uint32_t timeout = 10000);
+
+    /**
+     * @brief Send previously prepared HTTP data and trigger send sequence (AT$HTTPSEND)
+     * @param data Payload to write to module's data buffer (module-specific flow)
+     * @return true if send command accepted
+     */
+    bool httpSendData(const String &data);
+
+    /**
+     * @brief Execute HTTP action (AT$HTTPACTION)
+     * @param method 0=GET, 1=POST, 3=POST_EX (see modem guide)
+     * @param timeout Milliseconds to wait for $HTTPRECV responses and body
+     * @return Raw modem response (may include $HTTPRECV:DATA blocks and HTTP headers/body)
+     */
+    String httpAction(int method, uint32_t timeout = 15000);
+
+    /**
+     * @brief Convenience: perform HTTP GET
+     * @param url Full URL
+     * @param timeout Milliseconds to wait for response
+     * @return Raw modem output for the GET (headers+body blocks)
+     */
+    String httpGet(const String &url, uint32_t timeout = 15000);
+
+    /**
+     * @brief Convenience: perform HTTP POST with payload
+     * @param url Full URL
+     * @param payload Body to POST
+     * @param timeout Milliseconds to wait for response
+     * @return Raw modem output for the POST (headers+body blocks)
+     */
+    String httpPost(const String &url, const String &payload, uint32_t timeout = 20000);
     /**
      * @brief Đổi baudrate cho cả module SIM (AT+IPR) và UART ESP32
      * @param baud Baudrate mới (ví dụ 9600, 115200)
