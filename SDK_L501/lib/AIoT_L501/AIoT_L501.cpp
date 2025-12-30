@@ -120,8 +120,7 @@ void AIoT_L501::sendATcmd(const char *cmd) {
 
 bool AIoT_L501::sendAT(const char *cmd, String &response, uint32_t timeout) {
     // Xóa buffer trước khi gửi
-    //clearBuffer();
-    
+    clearBuffer(); 
     serial_.println(cmd);
     uint32_t start = millis();
     response = "";
@@ -322,6 +321,28 @@ bool AIoT_L501::ensureNetwork(uint8_t retry, uint32_t interval) {
     return false;
 }
 
+bool AIoT_L501::attachGPRS(const String &apn, const String &user, const String &pass) {
+    String resp;
+    // Standard PS attach + set PDP
+    if (!sendAT("AT+CGATT=1", resp, 5000)) return false;
+    String cmd = "AT+CGDCONT=1,\"IP\",\"" + apn + "\"";
+    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
+    String qic = "AT+QICSGP=1,1,\"" + apn + "\",\"\",\"\"";
+    sendAT(qic.c_str(), resp, 5000);
+    sendAT("AT+QIACT=1", resp, 8000);
+    return true;
+}
+bool AIoT_L501::activatePDP(int cid) {
+    String resp;
+    String cmd = "AT+CGACT=1," + String(cid);
+    return sendAT(cmd.c_str(), resp, 5000);
+}
+
+bool AIoT_L501::deactivatePDP(int cid) {
+    String resp;
+    String cmd = "AT+CGACT=0," + String(cid);
+    return sendAT(cmd.c_str(), resp, 5000);
+}
 // AT+NETOPEN - Mở kết nối mạng
 // bool AIoT_L501::netOpen() {
 //     String resp;
@@ -344,11 +365,14 @@ bool AIoT_L501::connectInternet4G(const String &apn, const String &user, const S
     String cmd = "AT+CGDCONT=" + String(cid) + ",\"IP\",\"" + apn + "\"";
     if (!sendAT(cmd.c_str(), resp, 5000)) return false;
     cmd = "AT+CGACT=1," + String(cid);
-    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
-    
-    // Mở kết nối mạng
+    sendAT(cmd.c_str(), resp, 5000);
+    String qic = "AT+QICSGP=1,1,\"" + apn + "\",\"\",\"\"";
+    sendAT(qic.c_str(), resp, 5000);
+    sendAT("AT+QIACT=1", resp, 8000);
+
+    // Open network
     if (!netOpen()) return false;
-    
+
     return true;
 }
 
@@ -813,7 +837,7 @@ bool AIoT_L501::netOpen() {
     if (resp.indexOf("OK") != -1 && netIsOpen()) return true;
 
     String tmp;
-    sendAT("AT+NETCLOSE", tmp, 5000);
+    sendAT("AT+NETCLOSE", tmp, 3000);
 
     clearBuffer();
     serial_.println("AT+NETOPEN");
