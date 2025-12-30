@@ -922,12 +922,10 @@ bool AIoT_L501::httpOpen() {
     String resp;
     return sendAT("AT$HTTPOPEN", resp, 5000);
 }
-
 bool AIoT_L501::httpClose() {
     String resp;
     return sendAT("AT$HTTPCLOSE", resp, 5000);
 }
-
 bool AIoT_L501::httpSetPara(const String &url, int port, int ssl) {
     String resp;
     String u = url;
@@ -937,7 +935,6 @@ bool AIoT_L501::httpSetPara(const String &url, int port, int ssl) {
     String cmd = "AT$HTTPPARA=" + u + "," + String(port) + "," + String(ssl);
     return sendAT(cmd.c_str(), resp, 5000);
 }
-
 bool AIoT_L501::httpSetHeader(const String &name, const String &value) {
     String resp;
     String n = name;
@@ -955,7 +952,6 @@ bool AIoT_L501::httpSetHeader(const String &name, const String &value) {
     bool ok = sendAT(cmd.c_str(), resp, 5000);
     return ok;
 }
-
 bool AIoT_L501::httpDataBegin(size_t length, uint32_t timeout) {
     clearBuffer();
     String cmd = "AT$HTTPDATA=" + String(length) + "," + String(timeout);
@@ -977,7 +973,6 @@ bool AIoT_L501::httpDataBegin(size_t length, uint32_t timeout) {
     }
     return false; 
 }
-
 bool AIoT_L501::httpSendData(const String &data) {
     clearBuffer();
     serial_.write((const uint8_t*)data.c_str(), data.length());
@@ -1012,19 +1007,15 @@ String AIoT_L501::httpGet(const String &url, uint32_t timeout) {
     httpClose();
     return out;
 }
-
 String AIoT_L501::httpPost(const String &url, const String &payload, uint32_t timeout) {
     String resp;
-
     // 1. Dọn dẹp session cũ
     sendAT("AT$HTTPCLOSE", resp, 2000);
     delay(500);
-
     // 2. Mở session
     if (!httpOpen()) {
         return "ERROR: HTTPOPEN";
     }
-
     // 3. Cấu hình URL
     bool paraOk = httpSetPara(url, 0, 0);
     if (!paraOk) {
@@ -1040,7 +1031,6 @@ String AIoT_L501::httpPost(const String &url, const String &payload, uint32_t ti
         httpClose();
         return "ERROR: HTTPPARA";
     }
-
     // 4. Cấu hình Header
     if (payload.startsWith("{") || payload.startsWith("[")) {
         sendAT("AT$HTTPRQH=\"Content-Type\",\"application/json\"", resp, 2000);
@@ -1050,16 +1040,13 @@ String AIoT_L501::httpPost(const String &url, const String &payload, uint32_t ti
     
     String lenStr = "AT$HTTPRQH=\"Content-Length\",\"" + String(payload.length()) + "\"";
     sendAT(lenStr.c_str(), resp, 2000);
-
     delay(200);
-
     // 5. KÍCH HOẠT ACTION TRƯỚC
     // [LOG REMOVED]
     if (!sendAT("AT$HTTPACTION=1", resp, 10000)) {
         httpClose();
         return "ERROR: HTTPACTION";
     }
-
     // 6. GỬI DỮ LIỆU (AT$HTTPDATA)
     clearBuffer();
     String cmdData = "AT$HTTPDATA=" + String(payload.length());
@@ -1099,7 +1086,6 @@ String AIoT_L501::httpPost(const String &url, const String &payload, uint32_t ti
         delay(10);
     }
     httpClose();
-
     return output;
 }
 
