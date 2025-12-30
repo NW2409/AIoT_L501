@@ -108,7 +108,28 @@ public:
      * @return true nếu kết nối thành công, false nếu thất bại
      */
     bool ensureNetwork(uint8_t retry = 3, uint32_t interval = 5000);
+    /**
+     * @brief Gắn kết GPRS với APN
+     * @param apn Tên APN (VD: "v-internet", "m-wap")
+     * @param user Tên người dùng, mặc định rỗng
+     * @param pass Mật khẩu, mặc định rỗng
+     * @return true nếu thành công, false nếu thất bại
+     */
+    bool attachGPRS(const String &apn, const String &user = "", const String &pass = "");
 
+    /**
+     * @brief Kích hoạt PDP context
+     * @param cid Context ID, mặc định 1
+     * @return true nếu thành công, false nếu thất bại
+     */
+    bool activatePDP(int cid = 1);
+
+    /**
+     * @brief Hủy kích hoạt PDP context
+     * @param cid Context ID, mặc định 1
+     * @return true nếu thành công, false nếu thất bại
+     */
+    bool deactivatePDP(int cid = 1);
     /**
      * @brief Mở kết nối mạng (AT+NETOPEN)
      * @return true nếu thành công, false nếu thất bại
@@ -395,7 +416,10 @@ public:
      * @brief Đóng tất cả PDP context và socket khi khởi động để tránh lỗi kết nối
      */
     void cleanStart();
-/**
+    // ========================================================================
+     //HTTP 
+    // ========================================================================
+    /**
      * @brief Open HTTP service on module (AT$HTTPOPEN)
      * @return true if module replies OK
      */
