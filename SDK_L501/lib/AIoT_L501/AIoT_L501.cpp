@@ -29,7 +29,7 @@ bool AIoT_L501::init(unsigned long timeout) {
     Serial.println();
 
     // Khởi tạo Serial cho module
-    serial_.begin(baud_);
+    //serial_.begin(baud_);
 
     String resp;
 
