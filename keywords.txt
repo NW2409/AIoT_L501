@@ -1,0 +1,77 @@
+#######################################
+# Syntax Coloring Map For AIoT_L501
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+AIoT_L501	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+begin	KEYWORD2
+init	KEYWORD2
+sendAT	KEYWORD2
+readAT	KEYWORD2
+clearBuffer	KEYWORD2
+setBaudrate	KEYWORD2
+getBaudrate	KEYWORD2
+
+isSimReady	KEYWORD2
+isNetworkRegistered	KEYWORD2
+isDataConnected	KEYWORD2
+getSignalQuality	KEYWORD2
+getModuleInfo	KEYWORD2
+getIPAddress	KEYWORD2
+
+ensureNetwork	KEYWORD2
+netOpen	KEYWORD2
+netClose	KEYWORD2
+netIsOpen	KEYWORD2
+connectInternet4G	KEYWORD2
+connectInternet4G_L501	KEYWORD2
+
+sendSMS	KEYWORD2
+readSMS	KEYWORD2
+listAllSMS	KEYWORD2
+deleteSMS	KEYWORD2
+deleteAllSMS	KEYWORD2
+
+call	KEYWORD2
+answerCall	KEYWORD2
+hangUp	KEYWORD2
+
+mqttConfig	KEYWORD2
+mqttSetServer	KEYWORD2
+mqttConnect	KEYWORD2
+mqttPublish	KEYWORD2
+mqttSubscribe	KEYWORD2
+mqttUnsubscribe	KEYWORD2
+mqttReceive	KEYWORD2
+mqttDisconnect	KEYWORD2
+mqttClose	KEYWORD2
+mqttStop	KEYWORD2
+mqttStatus	KEYWORD2
+
+tcpConnect	KEYWORD2
+tcpSend	KEYWORD2
+tcpSendSmall	KEYWORD2
+tcpReceive	KEYWORD2
+tcpClose	KEYWORD2
+tcpCloseAll	KEYWORD2
+isTcpConnected	KEYWORD2
+
+udpOpen	KEYWORD2
+udpSend	KEYWORD2
+
+ping	KEYWORD2
+getNetworkTime	KEYWORD2
+setNetworkTime	KEYWORD2
+cleanStart	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################

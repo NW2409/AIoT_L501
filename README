@@ -1,0 +1,270 @@
+# AIoT_L501 - Thư viện Arduino/ESP32 cho module 4G L501
+
+## 1. Giới thiệu
+AIoT_L501 là thư viện Arduino/ESP32 dùng để giao tiếp và điều khiển module 4G AIoT L501 thông qua UART (AT Command).
+Thư viện hỗ trợ đầy đủ các chức năng:
+- Lấy thông tin module
+- Quản lý kết nối mạng 4G
+- Gửi/nhận tin nhắn SMS
+- Gọi điện, nhận cuộc gọi
+- Kết nối và giao tiếp MQTT
+- Kết nối và giao tiếp HTTP
+- Gửi/nhận dữ liệu TCP
+- Ping kiểm tra kết nối mạng, v.v.
+
+## 2. Sơ đồ đấu nối phần cứng
+
+Kết nối ESP32 với module 4G L501 qua UART:
+
+| ESP32         | L501 Module |
+|---------------|-------------|
+| 3V3 / 5V      | VCC         |
+| GND           | GND         |
+| TX (GPIO17)   | RXD         |
+| RX (GPIO16)   | TXD         |
+
+**Lưu ý:** Module 4G L501 yêu cầu nguồn ổn định, dòng tối thiểu 1A – 2A khi phát sóng.
+
+## 3. Cài đặt thư viện
+
+### 3.1. Thêm file ZIP qua Arduino IDE
+1. Vào menu: `Sketch` → `Include Library` → `Add .ZIP Library`
+2. Chọn file `AIoT_L501.zip` đã tải về
+3. Khởi động lại Arduino IDE
+
+### 3.2. Cài đặt thủ công
+1. Giải nén thư viện vào thư mục: `Documents/Arduino/libraries/AIoT_L501`
+2. Khởi động lại Arduino IDE
+
+## 4. Hướng dẫn sử dụng nhanh
+
+### 4.1. Khai báo thư viện và cấu hình chân UART
+```cpp
+#include <AIoT_L501.h>
+#define L501_RX 16
+#define L501_TX 17
+AIoT_L501 aiot(Serial2, 115200, L501_RX, L501_TX);
+```
+
+### 4.2. Khởi tạo và kiểm tra module
+```cpp
+void setup() {
+    Serial.begin(115200);
+    aiot.begin();
+    if (!aiot.init(10000)) {
+        Serial.println("Khởi tạo module L501 thất bại!");
+        while (1);
+    }
+}
+```
+
+### 4.3. Kết nối mạng 4G
+
+**APN các nhà mạng phổ biến:**
+
+| Nhà mạng   | APN         |
+|------------|-------------|
+| Viettel    | v-internet  |
+| Vinaphone  | m3-world    |
+| Mobifone   | m-wap       |
+
+```cpp
+const char* APN = "v-internet"; // Thay bằng APN phù hợp với SIM bạn sử dụng
+if (!aiot.connectInternet4G(APN)) {
+    Serial.println("Kết nối Internet thất bại!");
+}
+```
+
+## 5. Chức năng gửi/nhận tin nhắn SMS
+
+### 5.1. Gửi tin nhắn SMS
+```cpp
+const String phone = "+849xxxxxxxx"; // Số điện thoại nhận
+const String message = "Xin chào từ ESP32 + L501!";
+if (aiot.sendSMS(phone, message)) {
+    Serial.println("Gửi SMS thành công!");
+} else {
+    Serial.println("Gửi SMS thất bại!");
+}
+```
+
+### 5.2. Đọc tin nhắn SMS theo vị trí (index)
+```cpp
+int index = 1; // Vị trí tin nhắn trên SIM
+String sms = aiot.readSMS(index);
+Serial.print("Nội dung SMS: ");
+Serial.println(sms);
+```
+
+### 5.3. Liệt kê tất cả tin nhắn trên SIM
+```cpp
+String allSMS = aiot.listAllSMS();
+Serial.println("Danh sách SMS:");
+Serial.println(allSMS);
+```
+
+### 5.4. Xóa tin nhắn
+- Xóa một tin nhắn theo index:
+    ```cpp
+    int index = 1;
+    if (aiot.deleteSMS(index)) {
+        Serial.println("Đã xóa SMS tại vị trí " + String(index));
+    }
+    ```
+- Xóa tất cả tin nhắn trên SIM:
+    ```cpp
+    if (aiot.deleteAllSMS()) {
+        Serial.println("Đã xóa toàn bộ SMS trên SIM");
+    }
+    ```
+
+### 5.5. Lưu ý khi sử dụng SMS
+- Module Sim L501 có giới hạn số ký tự trong một tin nhắn (160 ký tự cho SMS thông thường).
+- Tin nhắn dài hơn sẽ được chia thành nhiều phần.
+- Số điện thoại nên dùng định dạng quốc tế (+84...).
+
+## 6. Chức năng gọi điện (Call)
+
+### 6.1. Thực hiện cuộc gọi
+```cpp
+const String phone = "+849xxxxxxxx"; // Số điện thoại cần gọi
+if (aiot.call(phone)) {
+    Serial.println("Đang gọi...");
+} else {
+    Serial.println("Gọi thất bại!");
+}
+```
+
+### 6.2. Ngắt cuộc gọi
+```cpp
+aiot.hangUp(); // Ngắt cuộc gọi đang thực hiện
+```
+
+### 6.3. Trả lời cuộc gọi đến
+```cpp
+aiot.answerCall(); // Trả lời khi có cuộc gọi đến
+```
+
+### 6.4. Lưu ý khi sử dụng chức năng gọi điện
+- SIM phải được kích hoạt chiều gọi và còn đủ tiền.
+- Số điện thoại nên dùng định dạng quốc tế (+84...).
+- Đảm bảo module đã đăng ký mạng thành công trước khi thực hiện cuộc gọi.
+- Một số nhà mạng có thể chặn cuộc gọi nếu SIM không đủ điều kiện.
+
+## 7. Chức năng MQTT
+
+### 7.1. Cấu hình MQTT Client
+```cpp
+aiot.mqttConfig("L501Device");
+```
+
+### 7.2. Thiết lập địa chỉ và cổng MQTT Broker
+```cpp
+aiot.mqttSetServer("broker.emqx.io", 1883, 3);
+```
+
+### 7.3. Kết nối tới MQTT Broker
+```cpp
+if (aiot.mqttConnect(0, 60)) {
+    Serial.println("Kết nối MQTT thành công!");
+} else {
+    Serial.println("Kết nối MQTT thất bại!");
+}
+```
+
+### 7.4. Đăng ký (Subscribe) và gửi dữ liệu (Publish)
+```cpp
+aiot.mqttSubscribe("testsim");
+aiot.mqttPublish("testsim", "L501 KET NOI THANH CONG");
+```
+
+### 7.5. Nhận dữ liệu từ topic
+```cpp
+String msg = aiot.mqttReceive(500); // timeout 500ms
+if (msg.length() > 0) {
+    Serial.println("[RX]: " + msg);
+}
+```
+
+### 7.6. Ngắt kết nối MQTT
+```cpp
+aiot.mqttDisconnect(); // Ngắt kết nối MQTT
+aiot.mqttClose();      // Đóng socket TCP
+```
+
+### 7.7. Lưu ý khi sử dụng MQTT
+- Đảm bảo module đã kết nối Internet 4G trước khi sử dụng MQTT.
+- Kiểm tra lại ClientID, địa chỉ broker, cổng và phiên bản MQTT phù hợp.
+- Một số broker yêu cầu xác thực user/pass.
+- Có thể kiểm tra trạng thái kết nối bằng aiot.mqttStatus().
+
+## 8. Chức năng TCP
+
+### 8.1. Kết nối TCP tới server
+```cpp
+int socketId = 1;
+const String host = "tcpbin.com"; // server echo để test TCP
+int port = 4242;
+if (aiot.tcpConnect(socketId, host, port)) {
+    Serial.println("Kết nối TCP thành công!");
+} else {
+    Serial.println("Kết nối TCP thất bại!");
+}
+```
+
+### 8.2. Gửi dữ liệu qua TCP
+```cpp
+String data = "Hello from L501";
+if (aiot.tcpSend(socketId, data)) {
+    Serial.println("Gửi dữ liệu TCP thành công!");
+}
+```
+
+### 8.3. Nhận dữ liệu từ server
+```cpp
+int length = 128; // Số byte cần đọc
+String resp = aiot.tcpReceive(socketId, length);
+Serial.println("Dữ liệu nhận được: " + resp);
+```
+
+### 8.4. Đóng kết nối TCP
+```cpp
+aiot.tcpClose(socketId); // Đóng socket TCP
+```
+
+### 8.5. Lưu ý khi sử dụng TCP
+- Đảm bảo module đã kết nối Internet 4G trước khi sử dụng TCP.
+- Mỗi socketId là một kết nối riêng biệt.
+- Đóng socket sau khi sử dụng để tránh chiếm tài nguyên.
+- Server cần hỗ trợ giao thức TCP và cho phép kết nối từ thiết bị IoT.
+
+## 9. Chức năng Ping
+
+### 9.1. Mô tả
+Chức năng Ping dùng để kiểm tra kết nối mạng của module L501 tới một địa chỉ IP hoặc tên miền. Kết quả trả về giúp xác định thiết bị đã kết nối Internet thành công hay chưa.
+### 9.2. Cú pháp hàm ping
+```cpp
+    // Ping đến google.com
+    Serial.println("[*] Đang ping google.com ...");
+    String pingResult = aiot.ping("google.com", 5, 32, 1);
+    Serial.println("[Ping Result]");
+    Serial.println(pingResult);
+
+```
+**Giải thích tham số hàm ping:**
+- Địa chỉ: `"google.com"` hoặc `"8.8.8.8"`
+- Số lần ping: `5`
+- Kích thước gói tin: `32` byte
+- Thời gian timeout mỗi lần: `1` giây
+
+### 9.3. Lưu ý khi sử dụng Ping
+- Đảm bảo module đã kết nối Internet 4G trước khi thực hiện ping.
+- Có thể dùng ping để kiểm tra trạng thái mạng trước khi gửi dữ liệu.
+- Một số địa chỉ có thể chặn ping, nên chọn địa chỉ phổ biến như google.com hoặc 8.8.8.8.
+
+## 10. Tài liệu hỗ trợ
+
+- File AT Command module L501: [L501_AT_Commands.pdf](docs/L501_AT_Commands.pdf)
+- [Ví dụ mẫu](examples/)
+
+
