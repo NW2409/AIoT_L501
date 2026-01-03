@@ -39,6 +39,7 @@ Kết nối ESP32 với module 4G L501 qua UART:
 ## 4. Hướng dẫn sử dụng nhanh
 
 ### 4.1. Khai báo thư viện và cấu hình chân UART
+
 ```cpp
 #include <AIoT_L501.h>
 #define L501_RX 16
@@ -47,6 +48,7 @@ AIoT_L501 aiot(Serial2, 115200, L501_RX, L501_TX);
 ```
 
 ### 4.2. Khởi tạo và kiểm tra module
+
 ```cpp
 void setup() {
     Serial.begin(115200);
@@ -78,6 +80,7 @@ if (!aiot.connectInternet4G(APN)) {
 ## 5. Chức năng gửi/nhận tin nhắn SMS
 
 ### 5.1. Gửi tin nhắn SMS
+
 ```cpp
 const String phone = "+849xxxxxxxx"; // Số điện thoại nhận
 const String message = "Xin chào từ ESP32 + L501!";
@@ -89,6 +92,7 @@ if (aiot.sendSMS(phone, message)) {
 ```
 
 ### 5.2. Đọc tin nhắn SMS theo vị trí (index)
+
 ```cpp
 int index = 1; // Vị trí tin nhắn trên SIM
 String sms = aiot.readSMS(index);
@@ -97,6 +101,7 @@ Serial.println(sms);
 ```
 
 ### 5.3. Liệt kê tất cả tin nhắn trên SIM
+
 ```cpp
 String allSMS = aiot.listAllSMS();
 Serial.println("Danh sách SMS:");
@@ -105,14 +110,16 @@ Serial.println(allSMS);
 
 ### 5.4. Xóa tin nhắn
 - Xóa một tin nhắn theo index:
-    ```cpp
+
+```cpp
     int index = 1;
     if (aiot.deleteSMS(index)) {
         Serial.println("Đã xóa SMS tại vị trí " + String(index));
     }
     ```
 - Xóa tất cả tin nhắn trên SIM:
-    ```cpp
+
+```cpp
     if (aiot.deleteAllSMS()) {
         Serial.println("Đã xóa toàn bộ SMS trên SIM");
     }
@@ -126,6 +133,7 @@ Serial.println(allSMS);
 ## 6. Chức năng gọi điện (Call)
 
 ### 6.1. Thực hiện cuộc gọi
+
 ```cpp
 const String phone = "+849xxxxxxxx"; // Số điện thoại cần gọi
 if (aiot.call(phone)) {
@@ -136,11 +144,13 @@ if (aiot.call(phone)) {
 ```
 
 ### 6.2. Ngắt cuộc gọi
+
 ```cpp
 aiot.hangUp(); // Ngắt cuộc gọi đang thực hiện
 ```
 
 ### 6.3. Trả lời cuộc gọi đến
+
 ```cpp
 aiot.answerCall(); // Trả lời khi có cuộc gọi đến
 ```
@@ -154,6 +164,7 @@ aiot.answerCall(); // Trả lời khi có cuộc gọi đến
 ## 7. Chức năng MQTT
 
 ### 7.1. Cấu hình MQTT Client
+
 ```cpp
 aiot.mqttConfig("L501Device");
 ```
@@ -164,6 +175,7 @@ aiot.mqttSetServer("broker.emqx.io", 1883, 3);
 ```
 
 ### 7.3. Kết nối tới MQTT Broker
+
 ```cpp
 if (aiot.mqttConnect(0, 60)) {
     Serial.println("Kết nối MQTT thành công!");
@@ -173,12 +185,14 @@ if (aiot.mqttConnect(0, 60)) {
 ```
 
 ### 7.4. Đăng ký (Subscribe) và gửi dữ liệu (Publish)
+
 ```cpp
 aiot.mqttSubscribe("testsim");
 aiot.mqttPublish("testsim", "L501 KET NOI THANH CONG");
 ```
 
 ### 7.5. Nhận dữ liệu từ topic
+
 ```cpp
 String msg = aiot.mqttReceive(500); // timeout 500ms
 if (msg.length() > 0) {
@@ -187,6 +201,7 @@ if (msg.length() > 0) {
 ```
 
 ### 7.6. Ngắt kết nối MQTT
+
 ```cpp
 aiot.mqttDisconnect(); // Ngắt kết nối MQTT
 aiot.mqttClose();      // Đóng socket TCP
@@ -201,6 +216,7 @@ aiot.mqttClose();      // Đóng socket TCP
 ## 8. Chức năng TCP
 
 ### 8.1. Kết nối TCP tới server
+
 ```cpp
 int socketId = 1;
 const String host = "tcpbin.com"; // server echo để test TCP
@@ -213,6 +229,7 @@ if (aiot.tcpConnect(socketId, host, port)) {
 ```
 
 ### 8.2. Gửi dữ liệu qua TCP
+
 ```cpp
 String data = "Hello from L501";
 if (aiot.tcpSend(socketId, data)) {
@@ -221,6 +238,7 @@ if (aiot.tcpSend(socketId, data)) {
 ```
 
 ### 8.3. Nhận dữ liệu từ server
+
 ```cpp
 int length = 128; // Số byte cần đọc
 String resp = aiot.tcpReceive(socketId, length);
@@ -228,6 +246,7 @@ Serial.println("Dữ liệu nhận được: " + resp);
 ```
 
 ### 8.4. Đóng kết nối TCP
+
 ```cpp
 aiot.tcpClose(socketId); // Đóng socket TCP
 ```
@@ -243,6 +262,7 @@ aiot.tcpClose(socketId); // Đóng socket TCP
 ### 9.1. Mô tả
 Chức năng Ping dùng để kiểm tra kết nối mạng của module L501 tới một địa chỉ IP hoặc tên miền. Kết quả trả về giúp xác định thiết bị đã kết nối Internet thành công hay chưa.
 ### 9.2. Cú pháp hàm ping
+
 ```cpp
     // Ping đến google.com
     Serial.println("[*] Đang ping google.com ...");
@@ -251,6 +271,7 @@ Chức năng Ping dùng để kiểm tra kết nối mạng của module L501 t�
     Serial.println(pingResult);
 
 ```
+
 **Giải thích tham số hàm ping:**
 - Địa chỉ: `"google.com"` hoặc `"8.8.8.8"`
 - Số lần ping: `5`
