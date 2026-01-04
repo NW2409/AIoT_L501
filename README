@@ -283,7 +283,60 @@ Chức năng Ping dùng để kiểm tra kết nối mạng của module L501 t�
 - Có thể dùng ping để kiểm tra trạng thái mạng trước khi gửi dữ liệu.
 - Một số địa chỉ có thể chặn ping, nên chọn địa chỉ phổ biến như google.com hoặc 8.8.8.8.
 
-## 10. Tài liệu hỗ trợ
+## 10. Chức năng HTTP
+
+### 10.1. Mô tả
+Thư viện hỗ trợ gửi các yêu cầu HTTP GET và POST để giao tiếp với các Web Server hoặc API.
+### 10.2. Hàm hỗ trợ tách nội dung (Helper)
+
+```cpp
+  String extractBody(const String &raw) {
+  int idx = raw.lastIndexOf("$HTTPRECV:DATA,");
+  if (idx == -1) return "";
+  int start = raw.indexOf('{', idx);
+  if (start == -1) start = raw.indexOf('\n', idx);
+  if (start == -1) return "";
+  String body = raw.substring(start);
+  body.trim();
+  return body;
+}
+```
+
+### 10.3. Gửi yêu cầu GET
+
+```cpp
+  String getRaw = aiot.httpGet("http://postman-echo.com/get?device=ESP32&test=sim_4g", 20000);
+  String getBody = extractBody(getRaw);
+  if (getBody.length() > 0) {
+    Serial.println(">>> KẾT QUẢ GET THÀNH CÔNG:");
+    Serial.println(getBody);
+  } else {
+    Serial.println("[LỖI] GET thất bại. Log thô:");
+    Serial.println(getRaw);
+  }
+```
+### 10.4. Gửi yêu cầu POST
+
+```cpp
+   String urlPost = "http://postman-echo.com/post";
+  // Payload JSON chuẩn
+  String payload = "{\"device\":\"ESP32_L501\",\"msg\":\"working\",\"value\":100}";
+  // Gọi hàm POST
+  String postRaw = aiot.httpPost(urlPost, payload, 30000);
+  String postBody = extractBody(postRaw);
+  String body = extractBody(rawResponse);
+  if (body.length() > 0) {
+    Serial.println("Response Body: " + body);
+  } else {
+    Serial.println("POST thất bại hoặc log thô: " + rawResponse);
+  }
+```
+### 10.5. Lưu ý khi sử dụng HTTP
+- Kết nối mạng: Phải đảm bảo thành công trước khi gọi lệnh HTTP.
+- Timeout: Mạng 4G có độ trễ cao hơn Wifi, nên đặt timeout tối thiểu là 15000ms (15s) đến 30000ms (30s).
+- Payload: Khi POST JSON, hãy đảm bảo chuỗi JSON hợp lệ.
+
+## 11. Tài liệu hỗ trợ
 
 - File AT Command module L501: [L501_AT_Commands.pdf](docs/L501_AT_Commands.pdf)
 - [Ví dụ mẫu](examples/)
