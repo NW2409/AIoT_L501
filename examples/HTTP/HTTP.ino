@@ -7,7 +7,6 @@
 #define RST_PIN   4  
 
 AIoT_L501 aiot(Serial2, 115200);
-
 const int MAX_RETRY = 3;  
 int errorCount = 0;      
 
