@@ -33,7 +33,7 @@ bool AIoT_L501::init(unsigned long timeout) {
     Serial.println();
 
     // Khởi tạo Serial cho module
-    serial_.begin(baud_);
+    //serial_.begin(baud_);
 
     String resp;
 
@@ -326,6 +326,28 @@ bool AIoT_L501::ensureNetwork(uint8_t retry, uint32_t interval) {
     return false;
 }
 
+bool AIoT_L501::attachGPRS(const String &apn, const String &user, const String &pass) {
+    String resp;
+    // Standard PS attach + set PDP
+    if (!sendAT("AT+CGATT=1", resp, 5000)) return false;
+    String cmd = "AT+CGDCONT=1,\"IP\",\"" + apn + "\"";
+    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
+    String qic = "AT+QICSGP=1,1,\"" + apn + "\",\"\",\"\"";
+    sendAT(qic.c_str(), resp, 5000);
+    sendAT("AT+QIACT=1", resp, 8000);
+    return true;
+}
+bool AIoT_L501::activatePDP(int cid) {
+    String resp;
+    String cmd = "AT+CGACT=1," + String(cid);
+    return sendAT(cmd.c_str(), resp, 5000);
+}
+
+bool AIoT_L501::deactivatePDP(int cid) {
+    String resp;
+    String cmd = "AT+CGACT=0," + String(cid);
+    return sendAT(cmd.c_str(), resp, 5000);
+}
 // AT+NETOPEN - Mở kết nối mạng
 // bool AIoT_L501::netOpen() {
 //     String resp;
@@ -348,14 +370,14 @@ bool AIoT_L501::connectInternet4G(const String &apn, const String &user, const S
     String cmd = "AT+CGDCONT=" + String(cid) + ",\"IP\",\"" + apn + "\"";
     if (!sendAT(cmd.c_str(), resp, 5000)) return false;
     cmd = "AT+CGACT=1," + String(cid);
-    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
-    
-    // Mở kết nối mạng
+    sendAT(cmd.c_str(), resp, 5000);
+    String qic = "AT+QICSGP=1,1,\"" + apn + "\",\"\",\"\"";
+    sendAT(qic.c_str(), resp, 5000);
+    sendAT("AT+QIACT=1", resp, 8000);
+    // Open network
     if (!netOpen()) return false;
-    
     return true;
 }
-
 bool AIoT_L501::connectInternet4G_L501(const String &apn, const String &user, const String &pass, int cid, int contextType, int auth) {
     String resp;
     // 1. Cấu hình APN, user, pass, context type, authentication
@@ -1008,4 +1030,179 @@ void AIoT_L501::cleanStart() {
     //     delay(100);
     // }
     delay(500); // Đợi module ổn định
+}
+
+// ============================================================================
+//                                    HTTP
+// ============================================================================
+
+bool AIoT_L501::httpOpen() {
+    String resp;
+    return sendAT("AT$HTTPOPEN", resp, 5000);
+}
+bool AIoT_L501::httpClose() {
+    String resp;
+    return sendAT("AT$HTTPCLOSE", resp, 5000);
+}
+bool AIoT_L501::httpSetPara(const String &url, int port, int ssl) {
+    String resp;
+    String u = url;
+    if (u.length() > 0 && u.charAt(0) != '"') {
+        u = String("\"") + u + String("\"");
+    }
+    String cmd = "AT$HTTPPARA=" + u + "," + String(port) + "," + String(ssl);
+    return sendAT(cmd.c_str(), resp, 5000);
+}
+bool AIoT_L501::httpSetHeader(const String &name, const String &value) {
+    String resp;
+    String n = name;
+    String v = value;
+    if (n.length() > 0 && n.charAt(0) != '"') n = String("\"") + n + String("\"");
+    bool isNumeric = true;
+    for (size_t i = 0; i < v.length(); ++i) {
+        char c = v.charAt(i);
+        if (c < '0' || c > '9') { isNumeric = false; break; }
+    }
+    if (!isNumeric) {
+        if (v.length() > 0 && v.charAt(0) != '"') v = String("\"") + v + String("\"");
+    }
+    String cmd = "AT$HTTPRQH=" + n + "," + v;
+    bool ok = sendAT(cmd.c_str(), resp, 5000);
+    return ok;
+}
+bool AIoT_L501::httpDataBegin(size_t length, uint32_t timeout) {
+    clearBuffer();
+    String cmd = "AT$HTTPDATA=" + String(length) + "," + String(timeout);
+    serial_.println(cmd); 
+    uint32_t start = millis();
+    String resp = "";
+    uint32_t waitUntil = millis() + timeout + 3000; 
+    while (millis() < waitUntil) {
+        while (serial_.available()) {
+            char c = serial_.read();
+            resp += c;
+        }
+        if (resp.indexOf("DOWNLOAD") != -1) return true;
+        if (resp.indexOf(">") != -1) return true;
+        if (resp.indexOf(">>") != -1) return true;
+        if (resp.indexOf("READY") != -1) return true;
+        if (resp.indexOf("ERROR") != -1) return false;
+        delay(10);
+    }
+    return false; 
+}
+bool AIoT_L501::httpSendData(const String &data) {
+    clearBuffer();
+    serial_.write((const uint8_t*)data.c_str(), data.length());
+    serial_.flush();
+    delay(400);
+    String r = readAT(10000);
+    if (r.indexOf("OK") != -1 || r.indexOf("$HTTPRECV:") != -1) {
+        return true;
+    }
+    String resp;
+    if (sendAT("AT$HTTPSEND", resp, 15000)) {
+        return true;
+    }
+    if (r.length() > 0) return true;
+    return false;
+}
+
+String AIoT_L501::httpAction(int method, uint32_t timeout) {
+    String resp;
+    String cmd = "AT$HTTPACTION=" + String(method);
+    clearBuffer();
+    serial_.println(cmd);
+    String out = readAT(timeout);
+    return out;
+}
+
+String AIoT_L501::httpGet(const String &url, uint32_t timeout) {
+    String out;
+    httpOpen();
+    httpSetPara("\"" + url + "\"", 0, 0);
+    out = httpAction(0, timeout);
+    httpClose();
+    return out;
+}
+String AIoT_L501::httpPost(const String &url, const String &payload, uint32_t timeout) {
+    String resp;
+    // 1. Dọn dẹp session cũ
+    sendAT("AT$HTTPCLOSE", resp, 2000);
+    delay(500);
+    // 2. Mở session
+    if (!httpOpen()) {
+        return "ERROR: HTTPOPEN";
+    }
+    // 3. Cấu hình URL
+    bool paraOk = httpSetPara(url, 0, 0);
+    if (!paraOk) {
+        int p1 = url.indexOf("//");
+        int start = (p1 != -1) ? p1 + 2 : 0;
+        int slash = url.indexOf('/', start);
+        String host = (slash != -1) ? url.substring(start, slash) : url.substring(start);
+        if (host.length() > 0) {
+            paraOk = httpSetPara(host, 0, 0);
+        }
+    }
+    if (!paraOk) {
+        httpClose();
+        return "ERROR: HTTPPARA";
+    }
+    // 4. Cấu hình Header
+    if (payload.startsWith("{") || payload.startsWith("[")) {
+        sendAT("AT$HTTPRQH=\"Content-Type\",\"application/json\"", resp, 2000);
+    } else {
+        sendAT("AT$HTTPRQH=\"Content-Type\",\"application/x-www-form-urlencoded\"", resp, 2000);
+    }
+    
+    String lenStr = "AT$HTTPRQH=\"Content-Length\",\"" + String(payload.length()) + "\"";
+    sendAT(lenStr.c_str(), resp, 2000);
+    delay(200);
+    // 5. KÍCH HOẠT ACTION TRƯỚC
+    // [LOG REMOVED]
+    if (!sendAT("AT$HTTPACTION=1", resp, 10000)) {
+        httpClose();
+        return "ERROR: HTTPACTION";
+    }
+    // 6. GỬI DỮ LIỆU (AT$HTTPDATA)
+    clearBuffer();
+    String cmdData = "AT$HTTPDATA=" + String(payload.length());
+    serial_.println(cmdData);
+    delay(200); 
+    serial_.print(payload); 
+    delay(500);
+    serial_.println("AT$HTTPSEND");
+    delay(500);
+    clearBuffer();
+    serial_.println("AT$HTTPDATA=0");
+    delay(100);
+    serial_.println("AT$HTTPSEND");
+    String output = "";
+    unsigned long startWait = millis();
+    bool foundHeader = false;
+    while (millis() - startWait < timeout) {
+        while (serial_.available()) {
+            char c = serial_.read();
+            output += c;
+        }
+        if (output.indexOf("$HTTPRECV:DATA") != -1) {
+            foundHeader = true;
+            if (millis() - startWait > (timeout - 1000)) {
+                // Sắp hết giờ
+            } else {
+                delay(100); 
+                continue; 
+            }
+        }
+        if (foundHeader) {
+            if (output.indexOf("HTTP/1.1 200") != -1 && output.indexOf("}") != -1) {
+                delay(100); 
+                break;
+            }
+        }
+        delay(10);
+    }
+    httpClose();
+    return output;
 }
