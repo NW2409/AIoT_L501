@@ -1,4 +1,3 @@
-![image](https://aiots.vn/wp-content/uploads/2024/08/logo-aiot-1-01.jpg)
 
 ## AIoT_L501 - Thư viện ESP32 cho module 4G L501
 
