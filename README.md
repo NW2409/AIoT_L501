@@ -309,30 +309,35 @@ Thư viện hỗ trợ gửi các yêu cầu HTTP GET và POST để giao tiếp
 ### 10.3. Gửi yêu cầu GET
 
 ```cpp
-  String getRaw = aiot.httpGet("http://postman-echo.com/get?device=ESP32&test=sim_4g", 20000);
-  String getBody = extractBody(getRaw);
-  if (getBody.length() > 0) {
-    Serial.println(">>> KẾT QUẢ GET THÀNH CÔNG:");
-    Serial.println(getBody);
+ String getRaw = aiot.httpGet("http://postman-echo.com/get?device=ESP32", 15000);
+  tDuration = millis() - tStart; 
+  if (extractBody(getRaw).length() > 0) {
+    Serial.print(">>> GET OK. Thời gian: ");
+    Serial.print(tDuration);
+    Serial.println(" ms");
+    errorCount = 0; 
   } else {
-    Serial.println("[LỖI] GET thất bại. Log thô:");
-    Serial.println(getRaw);
+    Serial.print("[LỖI] GET thất bại. Thời gian: ");
+    Serial.print(tDuration);
+    Serial.println(" ms");
+    errorCount++;
   }
 ```
 ### 10.4. Gửi yêu cầu POST
 
 ```cpp
-   String urlPost = "http://postman-echo.com/post";
-  // Payload JSON chuẩn
-  String payload = "{\"device\":\"ESP32_L501\",\"msg\":\"working\",\"value\":100}";
-  // Gọi hàm POST
-  String postRaw = aiot.httpPost(urlPost, payload, 30000);
-  String postBody = extractBody(postRaw);
-  String body = extractBody(rawResponse);
-  if (body.length() > 0) {
-    Serial.println("Response Body: " + body);
+  String postRaw = aiot.httpPost("http://postman-echo.com/post", payload, 15000);
+  tDuration = millis() - tStart; 
+  if (extractBody(postRaw).length() > 0) {
+    Serial.print(">>> POST OK. Thời gian: ");
+    Serial.print(tDuration);
+    Serial.println(" ms");
+    errorCount = 0;
   } else {
-    Serial.println("POST thất bại hoặc log thô: " + rawResponse);
+    Serial.print("[LỖI] POST thất bại. Thời gian: ");
+    Serial.print(tDuration);
+    Serial.println(" ms");
+    errorCount++;
   }
 ```
 ### 10.5. Lưu ý khi sử dụng HTTP
