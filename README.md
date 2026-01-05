@@ -1,4 +1,4 @@
-            ![logo-aiot-1-01](https://github.com/user-attachments/assets/9d9b5d9e-8f3e-47bc-9a09-dd98ded36766)
+![image](https://aiots.vn/wp-content/uploads/2024/08/logo-aiot-1-01.jpg)
 
 ## AIoT_L501 - Thư viện ESP32 cho module 4G L501
 
