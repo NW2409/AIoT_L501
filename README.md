@@ -5,7 +5,7 @@ AIoT_L501 là thư viện ESP32 dùng để giao tiếp và điều khiển modu
 Thư viện hỗ trợ đầy đủ các chức năng:
 - Lấy thông tin module
 - Quản lý kết nối mạng 4G
-- Gửi/nhận tin nhắn SMS
+- Quản lý tin nhắn: Gửi, nhận, đọc, xóa tin nhắn SMS
 - Gọi điện, nhận cuộc gọi
 - Kết nối và giao tiếp MQTT
 - Kết nối và giao tiếp HTTP
