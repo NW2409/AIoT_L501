@@ -205,6 +205,7 @@ if (msg.length() > 0) {
 ```cpp
 aiot.mqttDisconnect(); // Ngắt kết nối MQTT
 aiot.mqttClose();      // Đóng socket TCP
+aiot.stop();      // Ngắt kết nối Internet MQTT và đóng TCP
 ```
 
 ### 7.7. Lưu ý khi sử dụng MQTT
