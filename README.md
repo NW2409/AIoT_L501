@@ -1,4 +1,4 @@
-                                        # AIoT_L501 - Thư viện ESP32 cho module 4G L501
+                                        ## AIoT_L501 - Thư viện ESP32 cho module 4G L501
 
 
 ## 1. Giới thiệu
@@ -79,7 +79,7 @@ if (!aiot.connectInternet4G(APN)) {
 ```
 
 ## 5. Chức năng gửi/nhận tin nhắn SMS
-**Mô tả:** Cho phép gửi, nhận, đọc, liệt kê, ghép và xóa tin nhắn SMS trên SIM. Hỗ trợ tự động giải mã UCS2, ghép tin nhắn dài, xóa từng phần hoặc toàn bộ tin nhắn.
+**Mô tả:** Cho phép gửi, nhận, đọc, liệt kê, ghép và xóa tin nhắn SMS trên SIM. Hỗ trợ tự động giải mã UCS2, ghép tin nhắn dài và xóa tin nhắn.
 ### 5.1. Gửi tin nhắn SMS
 
 ```cpp
