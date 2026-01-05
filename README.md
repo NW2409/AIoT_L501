@@ -1,4 +1,5 @@
-             <img width="1024" height="426" alt="image" src="https://github.com/user-attachments/assets/d9ae31d8-ae6d-41dd-b913-a87b1f55d3fe" />
+            ![logo-aiot-1-01](https://github.com/user-attachments/assets/9d9b5d9e-8f3e-47bc-9a09-dd98ded36766)
+
 ## AIoT_L501 - Thư viện ESP32 cho module 4G L501
 
 ## 1. Giới thiệu
