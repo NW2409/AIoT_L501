@@ -37,7 +37,7 @@ Kết nối ESP32 với module 4G L501 qua UART:
 2. Khởi động lại Arduino IDE
 
 ## 4. Hướng dẫn sử dụng nhanh
-
+**Mô tả:** Các bước khai báo, khởi tạo, cấu hình và kết nối mạng 4G cơ bản để sử dụng module L501.
 ### 4.1. Khai báo thư viện và cấu hình chân UART
 
 ```cpp
@@ -78,7 +78,7 @@ if (!aiot.connectInternet4G(APN)) {
 ```
 
 ## 5. Chức năng gửi/nhận tin nhắn SMS
-
+**Mô tả:** Cho phép gửi, nhận, đọc, liệt kê, ghép và xóa tin nhắn SMS trên SIM. Hỗ trợ tự động giải mã UCS2, ghép tin nhắn dài, xóa từng phần hoặc toàn bộ tin nhắn.
 ### 5.1. Gửi tin nhắn SMS
 
 ```cpp
@@ -131,7 +131,7 @@ Serial.println(allSMS);
 - Số điện thoại nên dùng định dạng quốc tế (+84...).
 
 ## 6. Chức năng gọi điện (Call)
-
+**Mô tả:** Hỗ trợ thực hiện cuộc gọi đi, trả lời cuộc gọi đến, ngắt cuộc gọi thông qua module L501. Quản lý cuộc gọi bằng AT Command.
 ### 6.1. Thực hiện cuộc gọi
 
 ```cpp
@@ -162,7 +162,7 @@ aiot.answerCall(); // Trả lời khi có cuộc gọi đến
 - Một số nhà mạng có thể chặn cuộc gọi nếu SIM không đủ điều kiện.
 
 ## 7. Chức năng MQTT
-
+**Mô tả:** Kết nối, gửi/nhận dữ liệu với MQTT Broker qua mạng 4G. Hỗ trợ cấu hình client, server, subscribe/publish topic, kiểm tra trạng thái và ngắt kết nối MQTT.
 ### 7.1. Cấu hình MQTT Client
 
 ```cpp
@@ -215,7 +215,7 @@ aiot.stop();      // Ngắt kết nối Internet MQTT và đóng TCP
 - Có thể kiểm tra trạng thái kết nối bằng `aiot.mqttStatus()`
 
 ## 8. Chức năng TCP
-
+**Mô tả:** Tạo kết nối TCP tới server, gửi và nhận dữ liệu TCP, đóng kết nối. Hỗ trợ nhiều socket, phù hợp cho các ứng dụng IoT cần giao tiếp server trực tiếp.
 ### 8.1. Kết nối TCP tới server
 
 ```cpp
