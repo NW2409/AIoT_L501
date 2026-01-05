@@ -2,6 +2,14 @@
 #include <Arduino.h>
 #include <HardwareSerial.h>
 
+struct SMSMessage {
+    String sender;
+    String timeBase;
+    String content;
+    int originalIndexes[8]; // tối đa 8 phần/tin ghép
+    int originalCount;
+};
+
 class AIoT_L501 {
 public:
     /**
@@ -186,6 +194,21 @@ public:
      * @return true nếu xóa thành công, false nếu thất bại
      */
     bool deleteAllSMS();
+
+    /**
+     * @brief Giải mã chuỗi UCS2 sang UTF8
+     * @param hexInput Chuỗi đầu vào dạng hex
+     * @return Chuỗi đã giải mã sang UTF8
+     */
+    String decodeUCS2ToUTF8(const String& hexInput);
+
+    /**
+     * @brief Lấy danh sách tin nhắn hợp nhất
+     * @param outArray Mảng đầu ra để lưu danh sách tin nhắn
+     * @param maxCount Số lượng tin nhắn tối đa có thể lưu
+     * @return Số lượng tin nhắn đã được lưu vào mảng
+     */
+    int getMergedSMSList(SMSMessage* outArray, int maxCount);
 
     // ========================================================================
     // Call Functions (Cuộc gọi)
@@ -418,12 +441,6 @@ public:
      */
     bool udpSend(int socketId, const String &data, const String &host, int port);
 
-    /**
-     * @brief Đổi baudrate cho cả module SIM (AT+IPR) và UART ESP32
-     * @param baud Baudrate mới (ví dụ 9600, 115200)
-     * @param timeout Thời gian chờ OK cho AT+IPR (ms), mặc định 3000ms
-     * @return true nếu đổi thành công và bắt tay lại "AT" OK, false nếu thất bại (tự rollback UART)
-     */
      /**
      * @brief Ping một địa chỉ host qua mạng 4G
      * @param host Địa chỉ host (domain hoặc IP)
@@ -440,10 +457,11 @@ public:
      * @return true nếu thành công, false nếu lỗi
      */
     bool setNetworkTime(const String &time);
-        /**
+    /**
      * @brief Đóng tất cả PDP context và socket khi khởi động để tránh lỗi kết nối
      */
     void cleanStart();
+
     // ========================================================================
     // HTTP 
     // ========================================================================
@@ -521,16 +539,17 @@ public:
      * @param timeout Thời gian chờ OK cho AT+IPR (ms), mặc định 3000ms
      * @return true nếu đổi thành công và bắt tay lại "AT" OK, false nếu thất bại (tự rollback UART)
      */
-    /**
-     * @brief Lấy baudrate hiện tại của SDK
-     */
+
     bool setBaudrate(uint32_t baud, uint32_t timeout = 3000);
 
     /**
      * @brief Lấy baudrate hiện tại của SDK
      */
     uint32_t getBaudrate() const;
-
+        /**
+    * @brief Tắt nguồn module
+     */
+    void powerOff();
    
 private:
     HardwareSerial &serial_;

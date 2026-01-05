@@ -33,7 +33,7 @@ bool AIoT_L501::init(unsigned long timeout) {
     Serial.println();
 
     // Khởi tạo Serial cho module
-    //serial_.begin(baud_);
+    serial_.begin(baud_);
 
     String resp;
 
@@ -326,28 +326,6 @@ bool AIoT_L501::ensureNetwork(uint8_t retry, uint32_t interval) {
     return false;
 }
 
-bool AIoT_L501::attachGPRS(const String &apn, const String &user, const String &pass) {
-    String resp;
-    // Standard PS attach + set PDP
-    if (!sendAT("AT+CGATT=1", resp, 5000)) return false;
-    String cmd = "AT+CGDCONT=1,\"IP\",\"" + apn + "\"";
-    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
-    String qic = "AT+QICSGP=1,1,\"" + apn + "\",\"\",\"\"";
-    sendAT(qic.c_str(), resp, 5000);
-    sendAT("AT+QIACT=1", resp, 8000);
-    return true;
-}
-bool AIoT_L501::activatePDP(int cid) {
-    String resp;
-    String cmd = "AT+CGACT=1," + String(cid);
-    return sendAT(cmd.c_str(), resp, 5000);
-}
-
-bool AIoT_L501::deactivatePDP(int cid) {
-    String resp;
-    String cmd = "AT+CGACT=0," + String(cid);
-    return sendAT(cmd.c_str(), resp, 5000);
-}
 // AT+NETOPEN - Mở kết nối mạng
 // bool AIoT_L501::netOpen() {
 //     String resp;
@@ -370,14 +348,14 @@ bool AIoT_L501::connectInternet4G(const String &apn, const String &user, const S
     String cmd = "AT+CGDCONT=" + String(cid) + ",\"IP\",\"" + apn + "\"";
     if (!sendAT(cmd.c_str(), resp, 5000)) return false;
     cmd = "AT+CGACT=1," + String(cid);
-    sendAT(cmd.c_str(), resp, 5000);
-    String qic = "AT+QICSGP=1,1,\"" + apn + "\",\"\",\"\"";
-    sendAT(qic.c_str(), resp, 5000);
-    sendAT("AT+QIACT=1", resp, 8000);
-    // Open network
+    if (!sendAT(cmd.c_str(), resp, 5000)) return false;
+    
+    // Mở kết nối mạng
     if (!netOpen()) return false;
+    
     return true;
 }
+
 bool AIoT_L501::connectInternet4G_L501(const String &apn, const String &user, const String &pass, int cid, int contextType, int auth) {
     String resp;
     // 1. Cấu hình APN, user, pass, context type, authentication
@@ -486,6 +464,139 @@ bool AIoT_L501::deleteAllSMS() {
     sendAT("AT+CPMS=\"SM\",\"SM\",\"SM\"", resp, 3000);
     
     return sendAT("AT+CMGD=1,4", resp, 10000);
+}
+
+String AIoT_L501::decodeUCS2ToUTF8(const String& hexInput) {
+    String hex = hexInput;
+    hex.trim();
+    hex.replace("\"", "");
+    hex.replace(" ", "");
+    if (hex.length() == 0 || hex.length() % 4 != 0) {
+        String tmp = hexInput;
+        tmp.trim();
+        return tmp;
+    }
+    String result = "";
+    for (size_t i = 0; i < hex.length(); i += 4) {
+        String pair = hex.substring(i, i + 4);
+        uint16_t code = (uint16_t)strtol(pair.c_str(), NULL, 16);
+        if (code <= 0x7F) {
+            result += (char)code;
+        } else if (code <= 0x7FF) {
+            result += (char)(0xC0 | (code >> 6));
+            result += (char)(0x80 | (code & 0x3F));
+        } else {
+            result += (char)(0xE0 | (code >> 12));
+            result += (char)(0x80 | ((code >> 6) & 0x3F));
+            result += (char)(0x80 | (code & 0x3F));
+        }
+    }
+    return result;
+}
+
+int AIoT_L501::getMergedSMSList(SMSMessage* outArray, int maxCount) {
+    String rawList = listAllSMS();
+    int mergedCount = 0;
+    int startIndex = 0;
+    int lineEnd = rawList.indexOf('\n');
+    String currSender = "";
+    String currTime = "";
+    String currContent = "";
+    int currIndexes[8];
+    int currIndexCount = 0;
+
+    while (lineEnd != -1 || startIndex < rawList.length()) {
+        String line;
+        if (lineEnd == -1) {
+            line = rawList.substring(startIndex);
+        } else {
+            line = rawList.substring(startIndex, lineEnd);
+            startIndex = lineEnd + 1;
+            lineEnd = rawList.indexOf('\n', startIndex);
+        }
+        line.trim();
+
+        if (line.startsWith("+CMGL:")) {
+            // Lưu tin trước (nếu có)
+            if (currContent.length() > 0 && mergedCount < maxCount) {
+                bool merged = false;
+                for (int i = 0; i < mergedCount; i++) {
+                    if (outArray[i].sender == currSender &&
+                        abs(outArray[i].timeBase.toInt() - currTime.substring(0,12).toInt()) <= 20) {
+                        outArray[i].content += " " + currContent;
+                        // Ghép index gốc
+                        for (int k = 0; k < currIndexCount; k++) {
+                            if (outArray[i].originalCount < 8) {
+                                outArray[i].originalIndexes[outArray[i].originalCount++] = currIndexes[k];
+                            }
+                        }
+                        merged = true;
+                        break;
+                    }
+                }
+                if (!merged) {
+                    outArray[mergedCount].sender = currSender;
+                    outArray[mergedCount].timeBase = currTime.substring(0,12);
+                    outArray[mergedCount].content = currContent;
+                    outArray[mergedCount].originalCount = 0;
+                    for (int k = 0; k < currIndexCount && k < 8; k++) {
+                        outArray[mergedCount].originalIndexes[outArray[mergedCount].originalCount++] = currIndexes[k];
+                    }
+                    mergedCount++;
+                }
+                currContent = "";
+                currIndexCount = 0;
+            }
+            // Lấy index gốc từ +CMGL: <index>,
+            int spaceIdx = line.indexOf(' ');
+            int commaIdx = line.indexOf(',', spaceIdx + 1);
+            int smsIndex = line.substring(spaceIdx + 1, commaIdx).toInt();
+            currIndexes[0] = smsIndex;
+            currIndexCount = 1;
+
+            int comma1 = line.indexOf(',', 7);
+            int comma2 = line.indexOf(',', comma1 + 1);
+            int comma3 = line.indexOf(',', comma2 + 1);
+            int comma4 = line.indexOf(',', comma3 + 1);
+
+            currSender = line.substring(comma2 + 2, comma3 - 1);
+            currTime = (comma4 != -1) ? line.substring(comma4 + 2, comma4 + 14) : "Không rõ";
+        } else if (line.length() > 0 && !line.startsWith("OK")) {
+            String decoded = decodeUCS2ToUTF8(line);
+            if (currContent.length() > 0) currContent += "\n";
+            currContent += decoded;
+            // Nếu có nhiều dòng nội dung cho cùng 1 index, chỉ lưu index 1 lần
+            // (currIndexes đã có index rồi)
+        }
+    }
+    // Lưu tin cuối cùng
+    if (currContent.length() > 0 && mergedCount < maxCount) {
+        bool merged = false;
+        for (int i = 0; i < mergedCount; i++) {
+            if (outArray[i].sender == currSender &&
+                abs(outArray[i].timeBase.toInt() - currTime.substring(0,12).toInt()) <= 20) {
+                outArray[i].content += " " + currContent;
+                for (int k = 0; k < currIndexCount; k++) {
+                    if (outArray[i].originalCount < 8) {
+                        outArray[i].originalIndexes[outArray[i].originalCount++] = currIndexes[k];
+                    }
+                }
+                merged = true;
+                break;
+            }
+        }
+        if (!merged) {
+            outArray[mergedCount].sender = currSender;
+            outArray[mergedCount].timeBase = currTime.substring(0,12);
+            outArray[mergedCount].content = currContent;
+            outArray[mergedCount].originalCount = 0;
+            for (int k = 0; k < currIndexCount && k < 8; k++) {
+                outArray[mergedCount].originalIndexes[outArray[mergedCount].originalCount++] = currIndexes[k];
+            }
+            mergedCount++;
+        }
+    }
+    return mergedCount;
 }
 
 // ============================================================================
@@ -1031,6 +1142,11 @@ void AIoT_L501::cleanStart() {
     // }
     delay(500); // Đợi module ổn định
 }
+
+void AIoT_L501::powerOff() {
+    sendATcmd("AT+POWEROFF");
+}
+
 
 // ============================================================================
 //                                    HTTP
