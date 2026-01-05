@@ -116,14 +116,14 @@ Serial.println(allSMS);
     if (aiot.deleteSMS(index)) {
         Serial.println("Đã xóa SMS tại vị trí " + String(index));
     }
-    ```
+```
 - Xóa tất cả tin nhắn trên SIM:
 
 ```cpp
     if (aiot.deleteAllSMS()) {
         Serial.println("Đã xóa toàn bộ SMS trên SIM");
     }
-    ```
+```
 
 ### 5.5. Lưu ý khi sử dụng SMS
 - Module Sim L501 có giới hạn số ký tự trong một tin nhắn (160 ký tự cho SMS thông thường).
