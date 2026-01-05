@@ -131,7 +131,7 @@ Serial.println(allSMS);
 - Số điện thoại nên dùng định dạng quốc tế (+84...).
 
 ## 6. Chức năng gọi điện (Call)
-**Mô tả:** Hỗ trợ thực hiện cuộc gọi đi, trả lời cuộc gọi đến, ngắt cuộc gọi thông qua module L501. Quản lý cuộc gọi bằng AT Command.
+**Mô tả:** Hỗ trợ thực hiện cuộc gọi đi, trả lời cuộc gọi đến, ngắt cuộc gọi thông qua module L501.
 ### 6.1. Thực hiện cuộc gọi
 
 ```cpp
@@ -215,7 +215,7 @@ aiot.stop();      // Ngắt kết nối Internet MQTT và đóng TCP
 - Có thể kiểm tra trạng thái kết nối bằng `aiot.mqttStatus()`
 
 ## 8. Chức năng TCP
-**Mô tả:** Tạo kết nối TCP tới server, gửi và nhận dữ liệu TCP, đóng kết nối. Hỗ trợ nhiều socket, phù hợp cho các ứng dụng IoT cần giao tiếp server trực tiếp.
+**Mô tả:** Tạo kết nối TCP tới server, gửi và nhận dữ liệu TCP, đóng kết nối.
 ### 8.1. Kết nối TCP tới server
 
 ```cpp
