@@ -212,7 +212,7 @@ aiot.stop();      // Ngắt kết nối Internet MQTT và đóng TCP
 - Đảm bảo module đã kết nối Internet 4G trước khi sử dụng MQTT.
 - Kiểm tra lại ClientID, địa chỉ broker, cổng và phiên bản MQTT phù hợp.
 - Một số broker yêu cầu xác thực user/pass.
-- Có thể kiểm tra trạng thái kết nối bằng aiot.mqttStatus().
+- Có thể kiểm tra trạng thái kết nối bằng `aiot.mqttStatus()`
 
 ## 8. Chức năng TCP
 
