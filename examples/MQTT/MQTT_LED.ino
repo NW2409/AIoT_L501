@@ -53,7 +53,7 @@ void setup() {
     Serial.printf("[TIME] mqttConfig: %lu ms\n", t1-t0);
 
     t0 = millis();
-    bool mip = aiot.mqttSetServer("broker.emqx.io", 1883, 3);
+    bool mip = aiot.mqttSetServer("broker.emqx.io", 1883, 3); // Thay bằng broker đang sử dụng
     t1 = millis();
     Serial.printf("[TIME] mqttSetServer: %lu ms\n", t1-t0);
 
