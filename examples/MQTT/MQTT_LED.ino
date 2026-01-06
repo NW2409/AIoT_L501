@@ -18,7 +18,6 @@ void setup() {
     delay(1000);
     Serial.println("\n=== KHOI CHAY KET NOI MQTT THU CONG ===");
 
-    // Đo thời gian cho từng bước (bỏ đo heap)
     t0 = millis();
     aiot.begin();
     t1 = millis();
@@ -53,7 +52,7 @@ void setup() {
     Serial.printf("[TIME] mqttConfig: %lu ms\n", t1-t0);
 
     t0 = millis();
-    bool mip = aiot.mqttSetServer("broker.emqx.io", 1883, 3);
+    bool mip = aiot.mqttSetServer("broker.emqx.io", 1883, 3); // Thay bẳng broker đang sử dụng
     t1 = millis();
     Serial.printf("[TIME] mqttSetServer: %lu ms\n", t1-t0);
 
