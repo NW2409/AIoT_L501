@@ -99,11 +99,11 @@ void loop() {
             if (payload.equalsIgnoreCase("ON")) {
                 digitalWrite(LED_PIN, HIGH);
                 Serial.println("[LED] ON");
-                bool ok = aiot.mqttPublish("testsim", "Đã bật");
+                bool ok = aiot.mqttPublish("testsim", "Da bat");
             } else if (payload.equalsIgnoreCase("OFF")) {
                 digitalWrite(LED_PIN, LOW);
                 Serial.println("[LED] OFF");
-                bool ok = aiot.mqttPublish("testsim", "Đã tắt");
+                bool ok = aiot.mqttPublish("testsim", "Da tat");
             }
         }
     }
