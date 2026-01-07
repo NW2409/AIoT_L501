@@ -356,7 +356,7 @@ public:
     // int mqttGetLength(const String &data);
 
     // ========================================================================
-    // TCP/UDP Functions (Kết nối TCP/UDP)
+    // TCP Functions (Kết nối TCP)
     // ========================================================================
 
     /**
@@ -423,23 +423,23 @@ public:
      * @return true nếu đang kết nối, false nếu không
      */
     bool isTcpConnected(int socketId);
-    /**
-     * @brief Mở kết nối UDP
-     * @param socketId ID socket (1-10)
-     * @return true nếu mở thành công, false nếu thất bại
-     */
+    // /**
+    //  * @brief Mở kết nối UDP
+    //  * @param socketId ID socket (1-10)
+    //  * @return true nếu mở thành công, false nếu thất bại
+    //  */
     
-    bool udpOpen(int socketId);
+    // bool udpOpen(int socketId);
 
-    /**
-     * @brief Gửi dữ liệu qua UDP đến địa chỉ cụ thể
-     * @param socketId ID socket
-     * @param data Dữ liệu cần gửi
-     * @param host Địa chỉ server đích
-     * @param port Cổng đích
-     * @return true nếu gửi thành công, false nếu thất bại
-     */
-    bool udpSend(int socketId, const String &data, const String &host, int port);
+    // /**
+    //  * @brief Gửi dữ liệu qua UDP đến địa chỉ cụ thể
+    //  * @param socketId ID socket
+    //  * @param data Dữ liệu cần gửi
+    //  * @param host Địa chỉ server đích
+    //  * @param port Cổng đích
+    //  * @return true nếu gửi thành công, false nếu thất bại
+    //  */
+    // bool udpSend(int socketId, const String &data, const String &host, int port);
 
      /**
      * @brief Ping một địa chỉ host qua mạng 4G

@@ -782,7 +782,7 @@ bool AIoT_L501::mqttStop() {
 }
 
 // ============================================================================
-// TCP/UDP
+// TCP
 // ============================================================================
 
 // AT+CIPOPEN=socketId,"TCP","host",port
@@ -957,42 +957,42 @@ bool AIoT_L501::waitFor(const String &target, uint32_t timeout) {
 //     return resp.indexOf("SUCCESS") != -1 || resp.indexOf("OK") != -1;
 // }
 //===============UDP
-// AT+CIPOPEN=socketId,"UDP",,
-bool AIoT_L501::udpOpen(int socketId) {
-    String resp;
-    String cmd = "AT+CIPOPEN=" + String(socketId) + ",\"UDP\",,";
-    if (!sendAT(cmd.c_str(), resp, 10000)) return false;
-    String resp2 = readAT(5000);
-    return (resp.indexOf("SUCCESS") != -1) || (resp2.indexOf("SUCCESS") != -1);
-}
+// // AT+CIPOPEN=socketId,"UDP",,
+// bool AIoT_L501::udpOpen(int socketId) {
+//     String resp;
+//     String cmd = "AT+CIPOPEN=" + String(socketId) + ",\"UDP\",,";
+//     if (!sendAT(cmd.c_str(), resp, 10000)) return false;
+//     String resp2 = readAT(5000);
+//     return (resp.indexOf("SUCCESS") != -1) || (resp2.indexOf("SUCCESS") != -1);
+// }
 
 
 
-// AT+CIPSEND=socketId,length,"host",port rồi gửi data (UDP)
-bool AIoT_L501::udpSend(int socketId, const String &data, const String &host, int port) {
-    String resp;
-    int len = data.length();
-    String cmd = "AT+CIPSEND=" + String(socketId) + "," + String(len) + ",\"" + host + "\"," + String(port);
+// // AT+CIPSEND=socketId,length,"host",port rồi gửi data (UDP)
+// bool AIoT_L501::udpSend(int socketId, const String &data, const String &host, int port) {
+//     String resp;
+//     int len = data.length();
+//     String cmd = "AT+CIPSEND=" + String(socketId) + "," + String(len) + ",\"" + host + "\"," + String(port);
     
-    clearBuffer();
-    serial_.println(cmd);
+//     clearBuffer();
+//     serial_.println(cmd);
     
-    // Chờ dấu ">"
-    uint32_t start = millis();
-    while (millis() - start < 5000) {
-        if (serial_.available()) {
-            char c = serial_.read();
-            if (c == '>') break;
-        }
-    }
+//     // Chờ dấu ">"
+//     uint32_t start = millis();
+//     while (millis() - start < 5000) {
+//         if (serial_.available()) {
+//             char c = serial_.read();
+//             if (c == '>') break;
+//         }
+//     }
     
-    // Gửi dữ liệu
-    serial_.print(data);
+//     // Gửi dữ liệu
+//     serial_.print(data);
     
-    // Chờ phản hồi
-    resp = readAT(10000);
-    return resp.indexOf("SUCCESS") != -1 || resp.indexOf("OK") != -1;
-}
+//     // Chờ phản hồi
+//     resp = readAT(10000);
+//     return resp.indexOf("SUCCESS") != -1 || resp.indexOf("OK") != -1;
+// }
 
 
 
