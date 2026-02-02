@@ -28,37 +28,37 @@ void sendATSilent(String cmd) {
 }
 
 void hardResetSIM() {
-  Serial.println("\n[SYSTEM] >>> Đang thực hiện HARD RESET module SIM...");
+  Serial.println("\nĐang thực hiện HARD RESET module SIM...");
   digitalWrite(RST_PIN, HIGH); 
   delay(100);
   digitalWrite(RST_PIN, LOW);  
   delay(500);                 
   digitalWrite(RST_PIN, HIGH);
   
-  Serial.println("[SYSTEM] >>> Đã Reset xong. Đợi module khởi động (12s)...");
+  Serial.println("Đã Reset xong. Đợi module khởi động...");
   delay(12000); 
 }
 
 bool connectNetwork() {
   while (true) {
-    Serial.println("\n>> Đang thiết lập kết nối 4G...");
+    Serial.println("\nĐang thiết lập kết nối 4G...");
     aiot.begin();
-    Serial.println("Làm mới trạng thái SIM (CFUN=0)...");
+    Serial.println("Làm mới trạng thái SIM");
     sendATSilent("AT+CFUN=0"); 
     delay(2000); 
 
-    Serial.println("Bật lại module (CFUN=1)...");
+    Serial.println("Bật lại module");
     sendATSilent("AT+ENPWRSAVE=0"); 
     sendATSilent("AT+CFUN=1"); 
     delay(3000); 
     if (aiot.init(10000) && aiot.connectInternet4G("v-internet")) {
-      Serial.println("[OK] Kết nối mạng THÀNH CÔNG.");
+      Serial.println("Kết nối mạng THÀNH CÔNG.");
       errorCount = 0; 
       return true;    
     }
 
-    Serial.println("[LỖI] Không thấy SIM hoặc sóng yếu.");
-    Serial.println("[AUTO-FIX] Reset cứng và thử lại sau 5s...");
+    Serial.println("Không thấy SIM hoặc sóng yếu.");
+    Serial.println("Reset cứng và thử lại");
     hardResetSIM();
   }
 }
@@ -69,25 +69,25 @@ void setup() {
   pinMode(RST_PIN, OUTPUT);
   digitalWrite(RST_PIN, HIGH);
   delay(1000);
-  Serial.println("\n=== HỆ THỐNG KHỞI ĐỘNG ===");
+  Serial.println("\nHỆ THỐNG KHỞI ĐỘNG");
   connectNetwork();
 }
 
 void loop() {
   unsigned long tStart, tDuration; 
 
-  Serial.println("\n>> [GET] http://postman-echo.com/get...");
+  Serial.println("\n[GET] http://postman-echo.com/get...");
   tStart = millis(); 
   String getRaw = aiot.httpGet("http://postman-echo.com/get?device=ESP32", 15000);
   tDuration = millis() - tStart; 
   
   if (extractBody(getRaw).length() > 0) {
-    Serial.print(">>> GET OK. Thời gian: ");
+    Serial.print("GET OK. Thời gian: ");
     Serial.print(tDuration);
     Serial.println(" ms");
     errorCount = 0; 
   } else {
-    Serial.print("[LỖI] GET thất bại. Thời gian: ");
+    Serial.print("GET thất bại. Thời gian: ");
     Serial.print(tDuration);
     Serial.println(" ms");
     errorCount++;
@@ -102,12 +102,12 @@ void loop() {
   tDuration = millis() - tStart; 
   
   if (extractBody(postRaw).length() > 0) {
-    Serial.print(">>> POST OK. Thời gian: ");
+    Serial.print("POST OK. Thời gian: ");
     Serial.print(tDuration);
     Serial.println(" ms");
     errorCount = 0;
   } else {
-    Serial.print("[LỖI] POST thất bại. Thời gian: ");
+    Serial.print("POST thất bại. Thời gian: ");
     Serial.print(tDuration);
     Serial.println(" ms");
     errorCount++;
