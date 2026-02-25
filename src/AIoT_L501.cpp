@@ -3,11 +3,21 @@
 // ============================================================================
 // CONSTRUCTOR & KHỞI TẠO
 // ============================================================================
-
+void simPowerOn() {
+    digitalWrite(14, LOW);  
+    digitalWrite(27, LOW);  
+    delay(2000);
+    Serial.println("Powering ON SIM...");
+    digitalWrite(14, HIGH);   
+    delay(1000);
+    digitalWrite(27, LOW);  
+    delay(3000); 
+}
 AIoT_L501::AIoT_L501(HardwareSerial &serial, uint32_t baud, int rxPin, int txPin)
     : serial_(serial), baud_(baud), rxPin_(rxPin), txPin_(txPin) {}
 
 void AIoT_L501::begin() {
+    
     if (rxPin_ != -1 && txPin_ != -1) {
         serial_.begin(baud_, SERIAL_8N1, rxPin_, txPin_);
     } else {
@@ -18,6 +28,7 @@ void AIoT_L501::begin() {
 
 bool AIoT_L501::init(unsigned long timeout) {
     // In logo AIoT
+    simPowerOn();
     Serial.println();
     Serial.println("         ___    ____    _________");
     Serial.println("        /   |  /  _/___/___  ___/");
@@ -31,7 +42,7 @@ bool AIoT_L501::init(unsigned long timeout) {
     Serial.println("║            Author: AIoT               ║");
     Serial.println("╚═══════════════════════════════════════╝");
     Serial.println();
-
+    
     // Khởi tạo Serial cho module
     serial_.begin(baud_);
 
