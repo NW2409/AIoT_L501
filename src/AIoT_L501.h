@@ -42,6 +42,7 @@ public:
      * @param timeout Thời gian chờ phản hồi tối đa (ms)
      * @return true nếu nhận được "OK", false nếu "ERROR" hoặc timeout
      */
+    void simPowerOn();
     bool sendAT(const char *cmd, String &response, uint32_t timeout = 2000);
 
     /**
