@@ -1,40 +1,52 @@
 #include "AIoT_L501.h"
 
-// ============================================================================
-// CONSTRUCTOR & KHỞI TẠO
-// ============================================================================
-void simPowerOn() {
+
+void AIoT_L501::simPowerOn() {
+    pinMode(27, OUTPUT);  
+    pinMode(14, OUTPUT);  
+    digitalWrite(27, LOW);  
     digitalWrite(14, LOW);  
-    digitalWrite(27, LOW);  
-    delay(2000);
-    Serial.println("Powering ON SIM...");
-    digitalWrite(14, HIGH);   
     delay(1000);
-    digitalWrite(27, LOW);  
-    delay(3000); 
-}
+    Serial.println("Powering ON SIM!");
+    digitalWrite(27, HIGH);   
+    delay(1000);
+    digitalWrite(14, LOW);      
+    delay(5000);
+}  
 AIoT_L501::AIoT_L501(HardwareSerial &serial, uint32_t baud, int rxPin, int txPin)
     : serial_(serial), baud_(baud), rxPin_(rxPin), txPin_(txPin) {}
 
 void AIoT_L501::begin() {
+    // Khởi tạo GPIO cho module SIM
+    simPowerOn();
     
+    // Khởi tạo Serial
     if (rxPin_ != -1 && txPin_ != -1) {
         serial_.begin(baud_, SERIAL_8N1, rxPin_, txPin_);
     } else {
         serial_.begin(baud_);
     }
+    delay(500);  // Chờ Serial ổn định
     //cleanStart();
 }
 
 bool AIoT_L501::init(unsigned long timeout) {
+    pinMode(33, OUTPUT);
+    pinMode(26, OUTPUT);
+    serial_.begin(baud_);
+    delay(500);
+    clearBuffer();
+    delay(200);
+    uint32_t blinkHold = 250;      // ms LED on/off per half-cycle
+    uint32_t checkInterval = 500;  // ms delay between checks/polls
+    
     // In logo AIoT
-    simPowerOn();
     Serial.println();
     Serial.println("         ___    ____    _________");
     Serial.println("        /   |  /  _/___/___  ___/");
     Serial.println("       / /| |  / / / __ \\/ /    ");
     Serial.println("      / ___ |_/ / / /_/ / /      ");
-    Serial.println("     /_/  |_/___/ \\____/_/      ");
+    Serial.println("     /_/  |_/___/ \\___/_/      ");
     Serial.println();
     Serial.println("╔═══════════════════════════════════════╗");
     Serial.println("║    AIoT L501 SDK - ESP32 + 4G Module  ║");
@@ -42,12 +54,8 @@ bool AIoT_L501::init(unsigned long timeout) {
     Serial.println("║            Author: AIoT               ║");
     Serial.println("╚═══════════════════════════════════════╝");
     Serial.println();
-    
-    // Khởi tạo Serial cho module
-    serial_.begin(baud_);
 
     String resp;
-
     // ========== Kiểm tra AT ==========
     Serial.print("[AIoT] AT -> ");
     unsigned long start = millis();
@@ -61,57 +69,108 @@ bool AIoT_L501::init(unsigned long timeout) {
     }
     if (moduleReady) {
         Serial.println("OK");
+        blinkOK(1, blinkHold);
+        delay(checkInterval);
     } else {
         Serial.println("FAILED");
+        blinkFail(1, blinkHold);
         return false;
     }
-
-    // Tắt echo
     sendAT("ATE0", resp, 1000);
-
+    delay(1000);
     // ========== Kiểm tra AT+CPIN? (Khe cắm SIM) ==========
     Serial.print("[AIoT] AT+CPIN? -> ");
-    if (sendAT("AT+CPIN?", resp, 3000)) {
-        int idx = resp.indexOf("+CPIN:");
-        if (idx != -1) {
-            int end = resp.indexOf("\r\n", idx);
-            if (end != -1) {
-                String cpin = resp.substring(idx, end);
-                Serial.println(cpin);
-            } else {
-                Serial.println("OK");
+    {
+        unsigned long simStart = millis();
+        bool simReady = false;
+        while (millis() - simStart < timeout) {
+            if (sendAT("AT+CPIN?", resp, 2000)) {
+                int idx = resp.indexOf("+CPIN:");
+                if (idx != -1) {
+                    int end = resp.indexOf("\r\n", idx);
+                    String cpin = (end != -1) ? resp.substring(idx, end) : resp.substring(idx);
+                    Serial.println(cpin);
+                        if (cpin.indexOf("READY") != -1) {
+                        simReady = true;
+                        break;
+                    }
+                }
             }
-        } else {
-            Serial.println("OK");
+                delay(checkInterval);
         }
-    } else {
-        Serial.println("FAILED (Không có SIM hoặc SIM lỗi)");
-        return false;
-    }
 
+        if (simReady) {
+                blinkOK(2, blinkHold);
+                delay(checkInterval);
+        } else {
+            Serial.println("FAILED (Không có SIM hoặc SIM lỗi)");
+                blinkFail(2, blinkHold);
+            return false;
+        }
+    }
+    delay(5000);
     // ========== Kiểm tra AT+CSQ (Chất lượng tín hiệu) ==========
     Serial.print("[AIoT] AT+CSQ -> ");
     if (sendAT("AT+CSQ", resp, 2000)) {
         int idx = resp.indexOf("+CSQ:");
         if (idx != -1) {
             int end = resp.indexOf("\r\n", idx);
-            if (end != -1) {
+                if (end != -1) {
                 String csq = resp.substring(idx, end);
                 Serial.println(csq);
+                blinkOK(3, blinkHold);
+                delay(checkInterval);
             } else {
                 Serial.println("OK");
+                blinkOK(3, blinkHold);
+                delay(checkInterval);
             }
         } else {
             Serial.println("OK");
         }
     } else {
         Serial.println("FAILED");
-    } 
-
+        blinkFail(3, 200);
+    }
+ delay(2000);
+    // ========== Kiểm tra AT+CREG? (Network Registration) ==========
+    Serial.print("[AIoT] AT+CREG? -> ");
+    if (sendAT("AT+CREG?", resp, 2000)) {
+        int idx = resp.indexOf("+CREG:");
+        if (idx != -1) {
+            int end = resp.indexOf("\r\n", idx);
+            if (end != -1) {
+                String creg = resp.substring(idx, end);
+                Serial.println(creg);
+                blinkOK(4, blinkHold);
+                delay(checkInterval);
+            } else {
+                Serial.println("OK");
+                blinkOK(4, blinkHold);
+                delay(checkInterval);
+            }
+        } else {
+            Serial.println("OK");
+        }
+    } else {
+        blinkFail(4, blinkHold);
+        Serial.println("FAILED");
+    }
+ delay(2000);
+    // ========== Cố gắng attach mạng (AT+CGATT=1) ==========
+    Serial.print("[AIoT] AT+CGATT=1 -> ");
+    if (sendAT("AT+CGATT=1", resp, 5000)) {
+        blinkOK(5, blinkHold);
+        delay(checkInterval);
+        Serial.println("OK");
+    } else {
+        blinkFail(5, blinkHold);
+        Serial.println("FAILED");
+    }
 
     Serial.println();
     Serial.println("╔════════════════════════════════════╗");
-    Serial.println("║  ✓ KHỞI TẠO MODULE THÀNH CÔNG!     ║");
+    Serial.println("║       ✓ HOÀN TẤT KHỞI TẠO!         ║");
     Serial.println("╚════════════════════════════════════╝");
     Serial.println();
 
@@ -129,13 +188,32 @@ void AIoT_L501::clearBuffer() {
     }
 }
 
+// LED blink helpers (OK -> GPIO33, FAIL -> GPIO26)
+void AIoT_L501::blinkOK(int times, uint32_t holdMs) {
+    for (int i = 0; i < times; ++i) {
+        digitalWrite(33, HIGH);
+        delay(holdMs);
+        digitalWrite(33, LOW);
+        delay(holdMs);
+    }
+}
+
+void AIoT_L501::blinkFail(int times, uint32_t holdMs) {
+    for (int i = 0; i < times; ++i) {
+        digitalWrite(26, HIGH);
+        delay(holdMs);
+        digitalWrite(26, LOW);
+        delay(holdMs);
+    }
+}
+
 void AIoT_L501::sendATcmd(const char *cmd) {
     serial_.println(cmd);
 }
 
 bool AIoT_L501::sendAT(const char *cmd, String &response, uint32_t timeout) {
     // Xóa buffer trước khi gửi
-    //clearBuffer();
+    clearBuffer();
     
     serial_.println(cmd);
     uint32_t start = millis();
