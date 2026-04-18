@@ -551,6 +551,9 @@ public:
     * @brief Tắt nguồn module
      */
     void powerOff();
+    // LED helpers: blink OK/FAIL indicators
+    void blinkOK(int times, uint32_t holdMs = 1000);
+    void blinkFail(int times, uint32_t holdMs = 1000);
    
 private:
     HardwareSerial &serial_;
