@@ -22,7 +22,7 @@ void setup() {
     Serial.println("[+] Module & SIM OK");
 
     // Gửi SMS
-    String phone = "+84973377546";
+    String phone = "+849xxxxxxxx";
     String message = "Xin chao tu L501!";
     bool ok = aiot.sendSMS(phone, message);
     if (ok) {
