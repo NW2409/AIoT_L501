@@ -16,6 +16,20 @@ Thư viện hỗ trợ đầy đủ các chức năng:
 - Ping kiểm tra kết nối mạng, v.v.
 
 ## 2. Sơ đồ đấu nối phần cứng
+**Mặt trước**
+<img width="1261" height="672" alt="image" src="https://github.com/user-attachments/assets/c62232d8-aad2-4a58-85c0-7d1763a549f1" />
+**⚠️ Chú ý:**
+- Cổng USB to UART: Phục vụ cho việc nạp chương trình (firmware) và giao tiếp dữ liệu
+- Cổng USB: Được dùng để giao tiếp dữ liệu trực tiếp với module L501.
+- <img src="https://github.com/user-attachments/assets/58157642-2b41-4af6-97e6-e051316a6af7" width="80" style="vertical-align:middle"/> 
+  Jumper kết nối tín hiệu UART (TX/RX) giữa ESP32 và Module Sim L501 thông qua mạch chuyển đổi mức điện áp. Nối các chân trong cùng một hàng (hàng 1 và hàng 2) bằng jumper theo chiều ngang.
+
+- <img src="https://github.com/user-attachments/assets/f6edea90-735c-48f2-b7e3-3a34c5e293cd" width="90" style="vertical-align:middle"/> 
+  Jumper cấp nguồn cho Mic, nối với nguồn 1.8V.
+
+**Hướng dẫn lắp đặt Nano Sim**
+
+<img width="1067" height="697" alt="image" src="https://github.com/user-attachments/assets/9b768145-9453-4437-a0ec-754ba1f7a81e" />
 
 Kết nối ESP32 với module 4G L501 qua UART:
 
