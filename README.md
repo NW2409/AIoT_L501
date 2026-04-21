@@ -27,7 +27,7 @@ Thư viện hỗ trợ đầy đủ các chức năng:
 - <img src="https://github.com/user-attachments/assets/f6edea90-735c-48f2-b7e3-3a34c5e293cd" width="90" style="vertical-align:middle"/> 
   Jumper cấp nguồn cho Mic, nối với nguồn 1.8V.
 
-**Hướng dẫn lắp đặt Nano Sim**
+**Mặt sau và hướng dẫn lắp đặt Nano Sim**
 
 <img width="1067" height="697" alt="image" src="https://github.com/user-attachments/assets/9b768145-9453-4437-a0ec-754ba1f7a81e" />
 
