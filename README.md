@@ -23,7 +23,7 @@ Thư viện hỗ trợ đầy đủ các chức năng:
 **⚠️ Chú ý:**
 - Cổng USB to UART: Phục vụ cho việc nạp chương trình (firmware) và giao tiếp dữ liệu
 - Cổng USB: Được dùng để giao tiếp dữ liệu trực tiếp với module L501.
-- <img src="https://github.com/user-attachments/assets/58157642-2b41-4af6-97e6-e051316a6af7" width="80" style="vertical-align:middle"/> 
+- <img width="76" height="150" alt="image" src="https://github.com/user-attachments/assets/36df9696-bcd8-4f89-8865-fa8b4bd21195" />
   Jumper kết nối tín hiệu UART (TX/RX) giữa ESP32 và Module Sim L501 thông qua mạch chuyển đổi mức điện áp. Nối các chân trong cùng một hàng (hàng 1 và hàng 2) bằng jumper theo chiều ngang.
 
 
