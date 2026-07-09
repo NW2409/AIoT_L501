@@ -17,6 +17,7 @@ Thư viện hỗ trợ đầy đủ các chức năng:
 
 ## 2. Sơ đồ đấu nối phần cứng
 **Mặt trước**
+
 <img width="917" height="517" alt="Untitled" src="https://github.com/user-attachments/assets/5a7b4b24-9c4c-4f5e-9722-040490d60924" />
 
 **⚠️ Chú ý:**
@@ -28,6 +29,7 @@ Thư viện hỗ trợ đầy đủ các chức năng:
 
 
 **Mặt sau**
+
 <img width="920" height="564" alt="Untitled1" src="https://github.com/user-attachments/assets/183ce9c9-3763-43e1-aba4-f8138bf882f8" />
 
 Kết nối ESP32 với module 4G L501 qua UART:
